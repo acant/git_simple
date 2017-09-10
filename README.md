@@ -1,5 +1,12 @@
 # GitSimple
 
+[![Gem Version](https://badge.fury.io/rb/git_simple.svg)](http://badge.fury.io/rb/git_simple)
+[![Code Climate](https://codeclimate.com/github/acant/git_simple.svg)](https://codeclimate.com/github/acant/git_simple)
+[![Build Status](https://travis-ci.org/acant/git_simple.svg?branch=master)](https://travis-ci.org/acant/git_simple)
+[![Inline docs](http://inch-ci.org/github/acant/git_simple.svg?branch=master)](http://inch-ci.org/github/acant/git_simple)
+[![Dependency Status](https://gemnasium.com/acant/git_simple.svg)](https://gemnasium.com/acant/git_simple)
+[![Test Coverage](https://codeclimate.com/github/acant/git_simple/badges/coverage.svg)](https://codeclimate.com/github/acant/git_simple/coverage)
+
 Git [porcelain layer](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain)
 in Ruby, for bare and working repositories. The [rugged gem](https://github.com/libgit2/rugged),
 and [libgit2](https://libgit2.github.com/), are used to provide the git plumbing.
@@ -23,6 +30,17 @@ Or install it yourself as:
 ## Usage
 
 TODO: Write usage instructions here
+
+## Alternative Projects
+
+Alternative gem which provide a Ruby porcelain type git interface exist, and
+will be listed here:
+
+* https://rubygems.org/gems/grit
+* https://rubygems.org/gems/git
+* https://rubygems.org/gems/rugged-easy
+* https://rubygems.org/gems/minigit
+* https://rubygems.org/gems/asgit
 
 ## Development
 

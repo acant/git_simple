@@ -1,0 +1,17 @@
+require: rubocop-rspec
+
+AllCops:
+  Exclude:
+    - 'tmp/**/*'
+  TargetRubyVersion: 2.0
+
+Metrics/LineLength:
+  Max: 90
+
+Metrics/MethodLength:
+  Max: 20
+
+BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - 'features/step_definitions/**/*'
