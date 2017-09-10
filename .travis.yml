@@ -1,5 +1,20 @@
 sudo: false
 language: ruby
+os:
+  - linux
+  - osx
 rvm:
-  - 2.3.3
+  - 1.9.3
+  - 2.1
+  - 2.3
+  - 2.4
+  - ruby-head
+matrix:
+  allow_failures:
+    - rvm: ruby-head
+  exclude:
+    - rvm: 2.4
+      os: osx
+    - rvm: ruby-head
+      os: osx
 before_install: gem install bundler -v 1.15.1

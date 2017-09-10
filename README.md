@@ -1,8 +1,8 @@
 # GitSimple
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/git_simple`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Git [porcelain layer](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain)
+in Ruby, for bare and working repositories. The [rugged gem](https://github.com/libgit2/rugged),
+and [libgit2](https://libgit2.github.com/), are used to provide the git plumbing.
 
 ## Installation
 
