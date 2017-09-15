@@ -5,6 +5,26 @@ RSpec::Matchers.define :have_indexed do |expected|
   end
 end
 
+RSpec::Matchers.define :have_any_changes do
+  match { |actual| diff_workdir_deltas(actual).any? }
+
+  match_when_negated { |actual| diff_workdir_deltas(actual).empty? }
+
+  def diff_workdir_deltas(actual)
+    actual_rugged_repository = Rugged::Repository.new(actual.to_s)
+    current_oid =
+      begin
+        actual_rugged_repository.head.target_id
+      rescue Rugged::ReferenceError
+        nil
+      end
+
+    actual_rugged_repository.diff_workdir(
+      current_oid, include_untracked: false
+    ).deltas
+  end
+end
+
 RSpec::Matchers.define :have_removed do |expected|
   match do |actual|
     actual_rugged_repository = Rugged::Repository.new(actual.to_s)
@@ -48,19 +68,49 @@ RSpec::Matchers.define :have_commit do |expected_commit|
       end
     commit = result[commit_index]
 
-    !commit.nil? &&
-      commit.message               == @expected_message &&
-      commit.author[:name]         == @expected_attributes[:name] &&
-      commit.author[:email]        == @expected_attributes[:email] &&
-      commit.author[:time].to_i    == @expected_time.to_i &&
-      commit.committer[:name]      == @expected_attributes[:name] &&
-      commit.committer[:email]     == @expected_attributes[:email] &&
-      commit.committer[:time].to_i == @expected_time.to_i
+    @actual = {}
+    # rubocop:disable Metrics/LineLength
+    @actual[:message]         = commit.message                if @expected.key?(:message)
+    @actual[:author_at]       = norm(commit.author[:time])    if @expected.key?(:author_at)
+    @actual[:author_name]     = commit.author[:name]          if @expected.key?(:author_name)
+    @actual[:author_email]    = commit.author[:email]         if @expected.key?(:author_email)
+    @actual[:committer_at]    = norm(commit.committer[:time]) if @expected.key?(:committer_at)
+    @actual[:committer_name]  = commit.committer[:name]       if @expected.key?(:committer_name)
+    @actual[:committer_email] = commit.committer[:email]      if @expected.key?(:committer_email)
+    # rubocop:enable all
+
+    next false unless commit
+    @actual == @expected
   end
 
-  chain :with do |expected_message, expected_time, expected_attributes|
-    @expected_message    = expected_message
-    @expected_time       = expected_time
-    @expected_attributes = expected_attributes
+  chain :with_message do |expected|
+    @expected ||= {}
+    @expected[:message] = expected
+  end
+
+  chain :at do |expected|
+    @expected ||= {}
+    @expected[:author_at]    = norm(expected)
+    @expected[:committer_at] = norm(expected)
+  end
+
+  chain :by do |expected_name, expected_email|
+    @expected ||= {}
+    @expected[:author_name]     = expected_name
+    @expected[:author_email]    = expected_email
+    @expected[:committer_name]  = expected_name
+    @expected[:committer_email] = expected_email
+  end
+
+  diffable
+  attr_reader :actual, :expected
+
+  # Normalize Time, by clearing sub-second elements.
+  #
+  # @param [Time] time
+  #
+  # @return [Time]
+  def norm(time)
+    Time.new(time.to_i)
   end
 end

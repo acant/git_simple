@@ -21,7 +21,7 @@ class GitFactory
   # @return [void]
   def self.build(repository_pathname, &block)
     instance = new(repository_pathname)
-    instance.instance_eval(&block)
+    instance.instance_eval(&block) if block
   end
 
   # @param (see .build)
@@ -88,7 +88,9 @@ class GitFactory
 
     paths = paths_and_options
     paths.pop if paths.last.is_a?(Hash)
-    rugged_repository.index.add(Pathname('').join(*paths).to_s)
+    index_write do |index|
+      index.add(Pathname('').join(*paths).to_s)
+    end
   end
 
   # @param [String] message
@@ -97,7 +99,8 @@ class GitFactory
   # @option options [String] :email
   #
   # @return [void]
-  def commit(message, options = {}) # rubocop;disable Metrics/AbcSize
+  def commit(message, options = {}) # rubocop:disable Metrics/AbcSize
+    rugged_repository.index.reload
     author_hash = {
       name:  options[:name] || GitFactory.default_name,
       email: options[:email] || GitFactory.default_email,
@@ -118,10 +121,10 @@ class GitFactory
   #
   # @return [void]
   def commit_all(message, options = {})
-    rugged_repository.index.reload
-    rugged_repository.index.add_all
-    rugged_repository.index.update_all
-    rugged_repository.index.write
+    index_write do |index|
+      index.add_all
+      index.update_all
+    end
 
     commit(message, options)
   end
@@ -146,5 +149,17 @@ class GitFactory
   def parent_commits
     return [] if rugged_repository.empty?
     [rugged_repository.head.target].compact
+  end
+
+  # "Open" the index for writing by reloading it, and the ensure that the
+  # modified index is written out to disk right away.
+  #
+  # @yieldparam [Rugged::Index]
+  #
+  # @return [void]
+  def index_write
+    rugged_repository.index.reload
+    yield(rugged_repository.index)
+    rugged_repository.index.write
   end
 end

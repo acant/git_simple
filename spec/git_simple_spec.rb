@@ -169,9 +169,10 @@ RSpec.describe GitSimple do
       it { is_expected.to eq(git_simple) }
 
       its_side_effects_are do
-        expect(repository_pathname).to have_commit(:head).with(
-          'new_commit', now, name: 'author', email: 'author@example.com'
-        )
+        expect(repository_pathname).to have_commit(:head)
+          .with_message('new_commit')
+          .at(now)
+          .by('author', 'author@example.com')
       end
     end
 
@@ -191,13 +192,14 @@ RSpec.describe GitSimple do
       it { is_expected.to eq(git_simple) }
 
       its_side_effects_are do
-        expect(repository_pathname).to have_commit(:head).with(
-          'new_commit', now, name: 'author', email: 'author@example.com'
-        )
-        expect(repository_pathname).to have_commit(:head1).with(
-          'existing', existing_commit_time,
-          name: GitFactory.default_name, email: GitFactory.default_email
-        )
+        expect(repository_pathname).to have_commit(:head)
+          .with_message('new_commit')
+          .at(now)
+          .by('author', 'author@example.com')
+        expect(repository_pathname).to have_commit(:head1)
+          .with_message('existing')
+          .at(existing_commit_time)
+          .by(GitFactory.default_name, GitFactory.default_email)
       end
     end
   end

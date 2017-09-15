@@ -1,28 +1,42 @@
 Feature: Change commits the local repository
 
 Background:
-  Given the local repository exists
+  Given a local repository
+    And 'existing' is committed
+    And has uncommitted files:
+      |new|
+      |other|
 
 Scenario: Make commit a file to a repository
   When I execute:
     """ruby
-    new_file_pathname = local_repository_pathname.join('new_file')
-    new_file_pathname.write('add')
-    local_git.add(new_file_pathname)
-    local_git.commit('add file commit')
+    GitSimple.new(local_repository_pathname)
+      .add('new')
+      .commit('add file commit', name: 'Art T. Fish', email: 'afish@example.com')
     """
-  Then I see a commit message 'add file commit'
-    And I see everything is committed
+  Then I see a commit with 'add file commit'
+    And I see everything is committed except 'other'
 
 Scenario: Remove a file from the repository
-
-Scenario: Make a commit with everything the working tree
   When I execute:
     """ruby
-    existing_file_pathname = local_repository_pathname.join('existing_file')
-    local_git.rm(existing_file_pathname)
-    local_git.commit('rm file local')
+    GitSimple.new(local_repository_pathname)
+      .rm('existing')
+      .commit('remove file commit', name: 'Art T. Fish', email: 'afish@example.com')
     """
-  Then I see a commit message 'add file commit'
-    And I see everything is committed
+  Then I see a commit with 'remove file commit'
+    And I see 'existing' is removed and deleted
+    And I see everything is committed except:
+      |new|
+      |other|
 
+Scenario: Make a commit with everything the working tree
+  When the 'existing' file is deleted
+    And I execute:
+      """ruby
+      GitSimple.new(local_repository_pathname)
+        .add_all
+        .commit('add all commit', name: 'Art T. Fish', email: 'afish@example.com')
+      """
+  Then I see a commit with 'add all commit'
+    And I see everything is committed
