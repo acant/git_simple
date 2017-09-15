@@ -6,10 +6,11 @@ require 'rugged'
 #
 # @example
 #
-#   GitSimple.new('repo')
+#   GitSimple('repo')
 #     .add('new_file')
 #     .rm('old_file')
 #     .commit('Made some changes', name: 'Art T. Fish', email: 'afish@example.com')
+#
 class GitSimple
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)
@@ -127,4 +128,8 @@ class GitSimple
       end
     end
   end
+end
+
+def GitSimple(*args) # rubocop:disable Style/MethodName
+  GitSimple.new(*args)
 end

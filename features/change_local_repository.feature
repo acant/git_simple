@@ -10,7 +10,7 @@ Background:
 Scenario: Make commit a file to a repository
   When I execute:
     """ruby
-    GitSimple.new(local_repository_pathname)
+    GitSimple(local_repository_pathname)
       .add('new')
       .commit('add file commit', name: 'Art T. Fish', email: 'afish@example.com')
     """
@@ -20,7 +20,7 @@ Scenario: Make commit a file to a repository
 Scenario: Remove a file from the repository
   When I execute:
     """ruby
-    GitSimple.new(local_repository_pathname)
+    GitSimple(local_repository_pathname)
       .rm('existing')
       .commit('remove file commit', name: 'Art T. Fish', email: 'afish@example.com')
     """
@@ -34,7 +34,7 @@ Scenario: Make a commit with everything the working tree
   When the 'existing' file is deleted
     And I execute:
       """ruby
-      GitSimple.new(local_repository_pathname)
+      GitSimple(local_repository_pathname)
         .add_all
         .commit('add all commit', name: 'Art T. Fish', email: 'afish@example.com')
       """

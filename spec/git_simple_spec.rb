@@ -5,6 +5,17 @@ RSpec.describe GitSimple do
 
   let(:repository_pathname) { Pathname('tmp').join('spec', 'repository') }
 
+  describe 'initialization shortcut' do
+    subject { GitSimple(:arg1, :arg2, :arg3) }
+
+    before do
+      allow(described_class).to receive(:new)
+        .with(:arg1, :arg2, :arg3)
+        .and_return(:result)
+    end
+    it { is_expected.to eq(:result) }
+  end
+
   describe '#add' do
     subject { git_simple.add(*args) }
 
