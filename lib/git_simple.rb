@@ -20,47 +20,42 @@ class GitSimple
   #
   # @see https://github.com/hx/rugged-easy/blob/master/lib/rugged/easy/repository.rb
   #
+  # @param [Array<String, Array<String>, Pathname>] *args
+  #
   # @return [Git::Simple]
   def add(*args)
-    rugged.index.reload
-    Utils.glob_to_pathnames(args, repository_realpath) do |relative_path|
-      rugged.index.add(relative_path.to_s)
+    glob_to_index(args) do |index, relative_path|
+      index.add(relative_path.to_s)
     end
-    rugged.index.write
-
-    self
   end
 
   # Add all changes in the working tree into the index.
   #
   # @return [Git::Simple]
   def add_all
-    rugged.index.reload
-    rugged.index.add_all
-    rugged.index.update_all
-    rugged.index.write
-
-    self
+    index_write do |index|
+      index.add_all
+      index.update_all
+    end
   end
 
   # Remove files from the working tree and the index
   #
+  # @param [Array<String, Array<String>, Pathname>] *args
+  #
   # @return [Git::Simple]
   def rm(*args)
-    rugged.index.reload
-    Utils.glob_to_pathnames(args, repository_realpath) do |relative_path, realpath|
+    glob_to_index(args) do |index, relative_path, realpath|
+      index.remove(relative_path.to_s)
       realpath.delete
-      rugged.index.remove(relative_path.to_s)
     end
-    rugged.index.write
-
-    self
   end
 
   # @param [String] message
   # @param [Hash] options
   # @option options [String] :name for the author and committer
   # @option options [String] :email for the author and committer
+  #
   # @return [Git::Simple]
   def commit(message, options = {})
     author_hash = {
@@ -101,5 +96,35 @@ class GitSimple
   def last_commit
     return if rugged.empty?
     rugged.head.target
+  end
+
+  # "Open" the index for writing by reloading it, and the ensure that the
+  # modified index is written out to disk right away.
+  #
+  # @yieldparam [Rugged::Index] index
+  #
+  # @return [GitSimple]
+  def index_write
+    rugged.index.reload
+    yield(rugged.index)
+    rugged.index.write
+
+    self
+  end
+
+  # Glob the args and open the index for writing at the same time.
+  #
+  # @param [Array<String, Array<String>, Pathname>] *args
+  # @yieldparam [Rugged::Index] index
+  # @yieldparam [Pathname] relative_path
+  # @yieldparam [Pathname] realpath
+  #
+  # @return [GitSimple]
+  def glob_to_index(args)
+    index_write do |index|
+      Utils.glob_to_pathnames(args, repository_realpath) do |relative_path, realpath|
+        yield(index, relative_path, realpath)
+      end
+    end
   end
 end
