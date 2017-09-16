@@ -29,7 +29,12 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+```
+GitSimple('repo')
+  .add('new_file')
+  .rm('old_file')
+  .commit('Made some changes', name: 'Art T. Fish', email: 'afish@example.com')
+```
 
 ## Alternative Projects
 
