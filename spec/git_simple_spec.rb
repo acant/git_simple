@@ -20,7 +20,7 @@ RSpec.describe GitSimple do
     subject { git_simple.add(*args) }
 
     before do
-      GitFactory.init_f(repository_pathname) do
+      GitFactory.create(repository_pathname) do
         write('file1')
         write('file2')
         write('dir1', 'dir2', 'file3')
@@ -76,7 +76,7 @@ RSpec.describe GitSimple do
     subject { git_simple.add_all }
 
     before do
-      GitFactory.init_f(repository_pathname) do
+      GitFactory.create(repository_pathname) do
         # Add a commit with a file that can be deleted.
         add('existing')
         commit('remote commit')
@@ -108,7 +108,7 @@ RSpec.describe GitSimple do
     subject { git_simple.rm(*args) }
 
     before do
-      GitFactory.init_f(repository_pathname) do
+      GitFactory.create(repository_pathname) do
         write('file1')
         write('file2')
         write('dir1', 'dir2', 'file3')
@@ -172,7 +172,7 @@ RSpec.describe GitSimple do
 
     context 'initial commit' do
       before do
-        GitFactory.init_f(repository_pathname) do
+        GitFactory.create(repository_pathname) do
           add('new_file')
         end
       end
@@ -192,7 +192,7 @@ RSpec.describe GitSimple do
 
       before do
         Timecop.freeze(existing_commit_time) do
-          GitFactory.init_f(repository_pathname) do
+          GitFactory.create(repository_pathname) do
             add('existing')
             commit_all('existing')
             add('new_file')

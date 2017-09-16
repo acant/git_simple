@@ -36,15 +36,13 @@ RSpec.describe GitSimple::Utils do
     let(:other)         { base_pathname.join('other') }
 
     before do
-      base_pathname.rmtree if base_pathname.directory?
-      base_pathname.mkpath
-
-      IO.write(file1.to_s, '')
-      IO.write(file2.to_s, '')
-      file3.dirname.mkpath
-      IO.write(file3.to_s, '')
-      IO.write(file4.to_s, '')
-      IO.write(other.to_s, '')
+      FileTreeFactory.create(base_pathname) do
+        write('file1')
+        write('file2')
+        write('dir1', 'dir2', 'file3')
+        write('file4')
+        write('other')
+      end
     end
 
     it { is_expected.to eq([file1, file2, file4, file3, other]) }

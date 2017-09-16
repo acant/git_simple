@@ -1,24 +1,24 @@
 FILE_REGEX = /'([^']+)'/
 
 Given 'a local repository' do
-  GitFactory.init_f(local_repository_pathname)
+  GitFactory.create(local_repository_pathname)
 end
 
 Given(/^#{FILE_REGEX} is committed$/) do |filename|
-  GitFactory.build(local_repository_pathname) do
+  GitFactory.append(local_repository_pathname) do
     add(filename)
     commit("filename #{filename} commit")
   end
 end
 
 Given(/^has uncommitted files:$/) do |table|
-  GitFactory.build(local_repository_pathname) do
+  GitFactory.append(local_repository_pathname) do
     table.raw.each { |row| write(row.first) }
   end
 end
 
 When(/^the #{FILE_REGEX} file is deleted$/) do |filename|
-  GitFactory.build(local_repository_pathname) do
+  GitFactory.append(local_repository_pathname) do
     delete(filename)
   end
 end
