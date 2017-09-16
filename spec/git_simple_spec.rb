@@ -17,7 +17,7 @@ RSpec.describe GitSimple do
   end
 
   describe '#add' do
-    subject { git_simple.add(*args) }
+    subject { git_simple.add('file1', 'file2', 'dir1/dir2/file3', 'file4') }
 
     before do
       GitFactory.create(repository_pathname) do
@@ -27,48 +27,18 @@ RSpec.describe GitSimple do
         write('file4')
         write('not_added')
       end
+      expect(described_class::Utils).to receive(:glob_to_pathnames) # rubocop:disable RSpec/MessageSpies, LineLength
+        .and_call_original
     end
 
-    shared_examples_for 'files are added to index' do
-      it { is_expected.to eq(git_simple) }
+    it { is_expected.to eq(git_simple) }
 
-      its_side_effects_are do
-        expect(repository_pathname).to have_indexed('file1')
-        expect(repository_pathname).to have_indexed('file2')
-        expect(repository_pathname).to have_indexed('dir1/dir2/file3')
-        expect(repository_pathname).to have_indexed('file4')
-        expect(repository_pathname).not_to have_indexed('not_added')
-      end
-    end
-
-    context 'filenames' do
-      let(:args) { %w[file1 file2 dir1/dir2/file3 file4] }
-
-      it_behaves_like 'files are added to index'
-    end
-
-    context 'filename arrays' do
-      let(:args) { [%w[file1], %w[file2], %w[dir1 dir2 file3], %w[file4]] }
-
-      it_behaves_like 'files are added to index'
-    end
-
-    context 'pathnames' do
-      let(:args) { [Pathname('file1'), Pathname('file2'), Pathname('dir1/dir2/file3'), Pathname('file4')] } # rubocop:disable Metrics/LineLength
-
-      it_behaves_like 'files are added to index'
-    end
-
-    context 'globed' do
-      let(:args) { [Pathname('file*'), 'dir1/**/*'] }
-
-      it_behaves_like 'files are added to index'
-    end
-
-    context 'directory' do
-      let(:args) { %w[file1 file2 dir1 file4] }
-
-      it_behaves_like 'files are added to index'
+    its_side_effects_are do
+      expect(repository_pathname).to have_indexed('file1')
+      expect(repository_pathname).to have_indexed('file2')
+      expect(repository_pathname).to have_indexed('dir1/dir2/file3')
+      expect(repository_pathname).to have_indexed('file4')
+      expect(repository_pathname).not_to have_indexed('not_added')
     end
   end
 
@@ -105,7 +75,7 @@ RSpec.describe GitSimple do
   end
 
   describe '#rm' do
-    subject { git_simple.rm(*args) }
+    subject { git_simple.rm('file1', 'file2', 'dir1/dir2/file3', 'file4') }
 
     before do
       GitFactory.create(repository_pathname) do
@@ -116,48 +86,19 @@ RSpec.describe GitSimple do
         write('not_removed')
         commit_all('remote commit')
       end
+
+      expect(described_class::Utils).to receive(:glob_to_pathnames) # rubocop:disable RSpec/MessageSpies, LineLength
+        .and_call_original
     end
 
-    shared_examples_for 'files are removed from index' do
-      it { is_expected.to eq(git_simple) }
+    it { is_expected.to eq(git_simple) }
 
-      its_side_effects_are do
-        expect(repository_pathname).to have_removed('file1')
-        expect(repository_pathname).to have_removed('file2')
-        expect(repository_pathname).to have_removed('dir1/dir2/file3')
-        expect(repository_pathname).to have_removed('file4')
-        expect(repository_pathname).not_to have_removed('not_removed')
-      end
-    end
-
-    context 'filenames' do
-      let(:args) { %w[file1 file2 dir1/dir2/file3 file4] }
-
-      it_behaves_like 'files are removed from index'
-    end
-
-    context 'filename arrays' do
-      let(:args) { [%w[file1], %w[file2], %w[dir1 dir2 file3], %w[file4]] }
-
-      it_behaves_like 'files are removed from index'
-    end
-
-    context 'pathnames' do
-      let(:args) { [Pathname('file1'), Pathname('file2'), Pathname('dir1/dir2/file3'), Pathname('file4')] } # rubocop:disable Metrics/LineLength
-
-      it_behaves_like 'files are removed from index'
-    end
-
-    context 'globed' do
-      let(:args) { [Pathname('file*'), 'dir1/**/*'] }
-
-      it_behaves_like 'files are removed from index'
-    end
-
-    context 'directory' do
-      let(:args) { %w[file1 file2 dir1 file4] }
-
-      it_behaves_like 'files are removed from index'
+    its_side_effects_are do
+      expect(repository_pathname).to have_removed('file1')
+      expect(repository_pathname).to have_removed('file2')
+      expect(repository_pathname).to have_removed('dir1/dir2/file3')
+      expect(repository_pathname).to have_removed('file4')
+      expect(repository_pathname).not_to have_removed('not_removed')
     end
   end
 
