@@ -17,7 +17,7 @@ class GitSimple
 
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)
-    @repository_pathname = Utils.to_pathname(*args)
+    @pathname = Utils.to_pathname(*args)
   end
 
   # Add files into the index.
@@ -91,12 +91,12 @@ class GitSimple
 
   # @return [Rugged::Repository]
   def rugged
-    @rugged ||= Rugged::Repository.new(@repository_pathname.to_s)
+    @rugged ||= Rugged::Repository.discover(@pathname.to_s)
   end
 
   # @return [Pathname]
   def repository_realpath
-    @repository_pathname.realpath
+    @repository_realpath ||= Pathname(rugged.workdir).realpath
   end
 
   # @return [nil]
