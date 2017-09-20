@@ -12,6 +12,9 @@ require 'rugged'
 #     .commit('Made some changes', name: 'Art T. Fish', email: 'afish@example.com')
 #
 class GitSimple
+  class Error < StandardError
+  end
+
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)
     @repository_pathname = Utils.to_pathname(*args)
@@ -58,18 +61,22 @@ class GitSimple
   # @option options [String] :email for the author and committer
   #
   # @return [Git::Simple]
-  def commit(message, options = {})
-    author_hash = {
-      name:  options[:name],
-      email: options[:email],
+  def commit(message, options = {}) # rubocop:disable Metrics/AbcSize
+    author = {
+      name:  options[:name] || rugged.config['user.name'],
+      email: options[:email] || rugged.config['user.email'],
       time:  Time.now
     }
+
+    raise(GitSimple::Error, 'Cannot commit without a user name') unless author[:name]
+    raise(GitSimple::Error, 'Cannot commit without a user email') unless author[:email]
+
     rugged.index.reload
     Rugged::Commit.create(
       rugged,
       tree:       rugged.index.write_tree(rugged),
-      author:     author_hash,
-      committer:  author_hash,
+      author:     author,
+      committer:  author,
       message:    message,
       parents:    [last_commit].compact,
       update_ref: 'HEAD'

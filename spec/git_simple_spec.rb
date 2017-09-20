@@ -103,56 +103,94 @@ RSpec.describe GitSimple do
   end
 
   describe '#commit' do
-    subject do
-      timecopped(now) do
-        git_simple.commit('new_commit', name: 'author', email: 'author@example.com')
-      end
-    end
+    subject { timecopped(now) { git_simple.commit('new_commit', *args) } }
 
     let(:now) { Time.now }
 
-    context 'initial commit' do
+    describe 'missing config' do # rubocop:disable RSpec/EmptyExampleGroup
+      let(:args) { [] }
+
       before do
-        GitFactory.create(repository_pathname) do
-          add('new_file')
-        end
+        GitFactory.create(repository_pathname)
+        # rubocop:disable RSpec/AnyInstance
+        allow_any_instance_of(Rugged::Config).to receive(:[])
+          .with('user.name')
+          .and_return(user_name)
+        allow_any_instance_of(Rugged::Config).to receive(:[])
+          .with('user.email')
+          .and_return(user_email)
+        # rubocop:enable all
       end
 
-      it { is_expected.to eq(git_simple) }
-
-      its_side_effects_are do
-        expect(repository_pathname).to have_commit(:head)
-          .with_message('new_commit')
-          .at(now)
-          .by('author', 'author@example.com')
-      end
+      inputs           :user_name, :user_email
+      raise_error_with nil,        nil,        GitSimple::Error
+      raise_error_with nil,        nil,        'Cannot commit without a user name'
+      raise_error_with :name,      nil,        GitSimple::Error
+      raise_error_with :name,      nil,        'Cannot commit without a user email'
+      raise_error_with nil,        :email,     GitSimple::Error
+      raise_error_with nil,        :email,     'Cannot commit without a user name'
     end
 
-    context 'with existing commit' do
-      let(:existing_commit_time) { now }
-
-      before do
-        Timecop.freeze(existing_commit_time) do
+    shared_examples_for 'executes' do
+      context 'initial commit' do
+        before do
           GitFactory.create(repository_pathname) do
-            add('existing')
-            commit_all('existing')
             add('new_file')
           end
         end
+
+        it { is_expected.to eq(git_simple) }
+
+        its_side_effects_are do
+          expect(repository_pathname).to have_commit(:head)
+            .with_message('new_commit')
+            .at(now)
+            .by(expected_name, expected_email)
+        end
       end
 
-      it { is_expected.to eq(git_simple) }
+      context 'with existing commit' do
+        let(:existing_commit_time) { now }
 
-      its_side_effects_are do
-        expect(repository_pathname).to have_commit(:head)
-          .with_message('new_commit')
-          .at(now)
-          .by('author', 'author@example.com')
-        expect(repository_pathname).to have_commit(:head1)
-          .with_message('existing')
-          .at(existing_commit_time)
-          .by(GitFactory.default_name, GitFactory.default_email)
+        before do
+          Timecop.freeze(existing_commit_time) do
+            GitFactory.create(repository_pathname) do
+              add('existing')
+              commit_all('existing')
+              add('new_file')
+            end
+          end
+        end
+
+        it { is_expected.to eq(git_simple) }
+
+        its_side_effects_are do
+          expect(repository_pathname).to have_commit(:head)
+            .with_message('new_commit')
+            .at(now)
+            .by(expected_name, expected_email)
+          expect(repository_pathname).to have_commit(:head1)
+            .with_message('existing')
+            .at(existing_commit_time)
+            .by(GitFactory.default_name, GitFactory.default_email)
+        end
       end
+    end
+
+    context 'without options' do
+      let(:args)           { [] }
+      let(:expected_name)  { GitFactory.default_name }
+      let(:expected_email) { GitFactory.default_email }
+
+      it_behaves_like 'executes'
+    end
+
+    context 'with override options' do
+      let(:args)           { [{ name: 'author', email: 'author@example.com' }] }
+      let(:expected_name)  { 'author' }
+      let(:expected_email) { 'author@example.com' }
+
+      it_behaves_like 'executes'
     end
   end
 end

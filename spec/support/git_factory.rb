@@ -26,14 +26,22 @@ class GitFactory < FileTreeFactory
     def create(root_pathname, &block)
       instance = new(root_pathname)
       instance.clear
-      Rugged::Repository.init_at(root_pathname.to_s)
+      instance.init
       instance.instance_eval(&block) if block
     end
   end
 
+  # @return [void]
+  def init
+    Rugged::Repository.init_at(@root_pathname.to_s)
+
+    rugged_repository.config['user.name']  = GitFactory.default_name
+    rugged_repository.config['user.email'] = GitFactory.default_email
+  end
+
   # @param (see #write)
   #
-  # @ return [void]
+  # @return [void]
   def add(*paths_and_options)
     write(*paths_and_options)
 
