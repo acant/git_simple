@@ -21,6 +21,11 @@ RuboCop::RakeTask.new do |task|
   ]
 end
 
-Cucumber::Rake::Task.new(:features)
+Cucumber::Rake::Task.new(:features) do |task|
+  task.cucumber_opts = %w[
+    --format pretty
+    --format html --out tmp/features.html
+  ]
+end
 
 task default: %i[spec features rubocop]
