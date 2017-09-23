@@ -1,4 +1,4 @@
-Feature: Change commits the local repository
+Feature: Change commits in the local repository
 
 Background:
   Given a local repository
@@ -40,3 +40,7 @@ Scenario: Make a commit with everything the working tree
       """
   Then I see a commit with 'add all commit'
     And I see everything is committed
+
+Scenario: Revert a commit
+
+Scenario: Revert a file
