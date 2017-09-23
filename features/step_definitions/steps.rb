@@ -24,7 +24,7 @@ When(/^the #{FILE_REGEX} file is deleted$/) do |filename|
 end
 
 When 'I execute:' do |script|
-  instance_eval(script)
+  expect { instance_eval(script) }.not_to raise_error
 end
 
 Then(/^I see a commit with #{FILE_REGEX}$/) do |message|
