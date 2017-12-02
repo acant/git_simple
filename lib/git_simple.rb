@@ -1,6 +1,7 @@
 require 'git_simple/version'
 require 'git_simple/utils'
 require 'rugged'
+require 'pathname'
 
 # Simple interface for interacting with a Git repository.
 #

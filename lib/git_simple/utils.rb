@@ -1,5 +1,3 @@
-require 'pathname'
-
 class GitSimple
   # Miscellaneous methods to support GitSimple.
   module Utils
