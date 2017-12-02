@@ -46,6 +46,7 @@ will be listed here:
 * https://rubygems.org/gems/rugged-easy
 * https://rubygems.org/gems/minigit
 * https://rubygems.org/gems/asgit
+* https://github.com/schacon/simplegit
 
 ## Development
 
