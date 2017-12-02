@@ -1,10 +1,11 @@
 require 'bundler/setup'
-require 'git_simple'
 require 'rspec/timecop'
 require 'rspec/tabular'
 Dir[File.dirname(__FILE__) + '/support/**/*.rb'].each { |f| require f }
 require 'simplecov'
 SimpleCov.start
+
+require 'git_simple'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
