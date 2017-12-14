@@ -15,3 +15,9 @@ BlockLength:
   Exclude:
     - 'spec/**/*'
     - 'features/step_definitions/**/*'
+
+RSpec/MessageSpies:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Max: 4

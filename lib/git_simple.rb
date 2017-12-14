@@ -21,6 +21,22 @@ class GitSimple
     @pathname = Utils.to_pathname(*args)
   end
 
+  # @return [Git::Simple]
+  def init
+    Rugged::Repository.init_at(@pathname.to_s)
+    self
+  end
+
+  # @param [String]
+  #
+  # @return [Git::Simple]
+  def clone(remote_url)
+    # raise if the pathname already exists
+    @pathname.mkpath
+    Rugged::Repository.clone_at(remote_url, @pathname.to_s)
+    self
+  end
+
   # Add files into the index.
   #
   # @see https://github.com/hx/rugged-easy/blob/master/lib/rugged/easy/repository.rb
@@ -61,30 +77,111 @@ class GitSimple
   # @option options [String] :name for the author and committer
   # @option options [String] :email for the author and committer
   #
+  # @raise (see #commit_create)
+  #
   # @return [Git::Simple]
-  def commit(message, options = {}) # rubocop:disable Metrics/AbcSize
-    author = {
-      name:  options[:name] || rugged.config['user.name'],
-      email: options[:email] || rugged.config['user.email'],
-      time:  Time.now
-    }
+  def commit(message, options = {})
+    index_write do
+      commit_create(
+        message,
+        rugged.index.write_tree,
+        head_target,
+        options
+      )
+    end
+  end
 
-    raise(GitSimple::Error, 'Cannot commit without a user name') unless author[:name]
-    raise(GitSimple::Error, 'Cannot commit without a user email') unless author[:email]
+  # @param [Hash] options
+  # @option options [String] :name for the author and committer
+  # @option options [String] :email for the author and committer
+  #
+  # @raise (see #commit_create)
+  #
+  # @return [Git::Simple]
+  def pull(options = {}) # rubocop:disable Metrics/AbcSize
+    head_remote.fetch
 
-    rugged.index.reload
-    Rugged::Commit.create(
-      rugged,
-      tree:       rugged.index.write_tree(rugged),
-      author:     author,
-      committer:  author,
-      message:    message,
-      parents:    [last_commit].compact,
-      update_ref: 'HEAD'
-    )
+    merge_analysis = rugged.merge_analysis(head_remote_branch.name)
+    if merge_analysis.include?(:fastforward)
+      rugged.references.update(head_ref, head_remote_branch.target_id)
+      rugged.checkout_head(strategy: :force)
+    elsif merge_analysis.include?(:normal)
+      ours   = head_target
+      theirs = head_remote_branch.target
+      base   = rugged.rev_parse(rugged.merge_base(ours, theirs))
+      index  = ours.tree.merge(theirs.tree, base.tree)
+
+      commit_create(
+        "Merge branch '#{head_branch.name}' of #{head_remote.url}",
+        index.write_tree(rugged),
+        [ours, theirs],
+        options
+      )
+      rugged.checkout_head(strategy: :force)
+    end
 
     self
   end
+
+  # @return [Git::Simple]
+  def push
+    return self unless head_remote
+
+    head_remote.push([head_ref])
+    self
+  end
+
+  # Allow direct access to the Rugged object.
+  #
+  # @yieldparam [Rugged] rugged
+  # @yieldparam [Pathname] working_directory
+  #
+  # @return [Git::Simple]
+  def bypass
+    yield(rugged, working_directory)
+    self
+  end
+
+  # @overload log
+  #
+  # @overload log(path)
+  #   @param [Pathname, String] path
+  #
+  # @overload log(*path)
+  #   @param [Array<Pathname, String> *path
+  #
+  # @return [Enumerable<Rugged::Commit>]
+  def log(*args)
+    return [] unless head_target
+
+    path = args.any? ? Utils.to_pathname(*args).to_s : nil
+
+    walker = Rugged::Walker.new(rugged)
+    walker.sorting(Rugged::SORT_DATE)
+    walker.push(head_target)
+    walker.select { |x| path.nil? || x.diff(paths: [path]).size.nonzero? }
+  end
+
+  # @return [Array<String>]
+  def remote_names
+    rugged.remotes.map(&:name)
+  end
+
+  # @return [Array<String>]
+  def branch_names
+    rugged.branches.map(&:name)
+  end
+
+  # @return [Boolean]
+  def clean_working_tree?
+    rugged.status do |_file, status|
+      next if status.include?(:ignored)
+      return false
+    end
+    true
+  end
+
+  alias clean? clean_working_tree?
 
   ############################################################################
 
@@ -96,15 +193,79 @@ class GitSimple
   end
 
   # @return [Pathname]
-  def repository_realpath
-    @repository_realpath ||= Pathname(rugged.workdir).realpath
+  def working_directory
+    Pathname.new(rugged.workdir)
   end
 
   # @return [nil]
   # @return [Rugged::Commit]
-  def last_commit
+  def head_target
     return if rugged.empty?
     rugged.head.target
+  end
+
+  # @return [String]
+  def head_ref
+    rugged.head.name
+  end
+
+  # @return [Rugged::Branch]
+  def head_branch
+    rugged.branches[head_ref]
+  end
+
+  # @return [nil]
+  # @return [Rugged::Remote]
+  def head_remote
+    head_branch.remote || rugged.remotes['origin']
+  end
+
+  # @return [nil]
+  # @return [Rugged::Branch]
+  def head_remote_branch
+    head_branch.upstream || rugged.branches["#{head_remote.name}/#{head_branch.name}"]
+  end
+
+  # @param [Hash] options
+  # @option options [String] :name for the author and committer
+  # @option options [String] :email for the author and committer
+  #
+  # @raise [GitSimple::Error] if name or email cannot be found
+  #
+  # @return [Hash]
+  def author_now(options = {})
+    result = {
+      name:  options[:name] || rugged.config['user.name'],
+      email: options[:email] || rugged.config['user.email'],
+      time:  Time.now
+    }
+    raise(GitSimple::Error, 'Cannot commit without a user name') unless result[:name]
+    raise(GitSimple::Error, 'Cannot commit without a user email') unless result[:email]
+
+    result
+  end
+
+  # @param [String] message
+  # @param [Rugged::Tree]  tree
+  # @param [Rugged::Commit, Array<Rugged::Commit>] parents
+  # @param [Hash] options
+  # @option options [String] :name for the author and committer
+  # @option options [String] :email for the author and committer
+  #
+  # @raise (see #author_now)
+  #
+  # @return [Rugged::Commit]
+  def commit_create(message, tree, parents, options = {})
+    author = author_now(options)
+    Rugged::Commit.create(
+      rugged,
+      tree:       tree,
+      author:     author,
+      committer:  author,
+      message:    message,
+      parents:    [parents].flatten.compact,
+      update_ref: 'HEAD'
+    )
   end
 
   # "Open" the index for writing by reloading it, and the ensure that the
@@ -131,13 +292,15 @@ class GitSimple
   # @return [GitSimple]
   def glob_to_index(args)
     index_write do |index|
-      Utils.glob_to_pathnames(args, repository_realpath) do |relative_path, realpath|
+      Utils.glob_to_pathnames(
+        args, working_directory.realpath
+      ) do |relative_path, realpath|
         yield(index, relative_path, realpath)
       end
     end
   end
 end
 
-def GitSimple(*args) # rubocop:disable Style/MethodName
+def GitSimple(*args) # rubocop:disable Naming/MethodName
   GitSimple.new(*args)
 end

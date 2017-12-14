@@ -1,18 +1,26 @@
 Feature: Start a local repository
 
 Scenario: Initialize a new working directory
-
-Scenario: Clone from a repository over file
-  Given a remote repository
   When I execute:
     """ruby
-    git_simple = GitSimple(local_repository_pathname)
-    git_simple.clone(remote_repository_file_url)
+    GitSimple(local_repository_pathname)
+      .init
+    """
+  Then I see a local repository
+
+Scenario Outline: Clone from a remote repository
+  Given a remote repository accessible by <protocol>
+    And 'remote_commit' is committed in the remote repository
+  When I execute:
+    """ruby
+    GitSimple(local_repository_pathname)
+      .clone(<protocol_url>)
     """
   Then I see the repositories are synchronized
 
-Scenario: Clone from a repository over HTTP
-
-Scenario: Clone from a repository over HTTPS
-
-Scenario: Clone from a repository over SSH
+  Examples:
+    | protocol |
+    | file     |
+    | http     |
+    | https    |
+    | ssh      |

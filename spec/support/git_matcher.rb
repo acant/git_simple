@@ -1,3 +1,14 @@
+RSpec::Matchers.define :be_a_repository do
+  match do |actual|
+    begin
+      Rugged::Repository.new(actual.to_s)
+      true
+    rescue # rubocop:disable Lint/RescueWithoutErrorClass
+      false
+    end
+  end
+end
+
 RSpec::Matchers.define :have_indexed do |expected|
   match do |actual|
     actual_rugged_repository = Rugged::Repository.new(actual.to_s)
@@ -19,9 +30,13 @@ RSpec::Matchers.define :have_any_changes do
         nil
       end
 
-    actual_rugged_repository.diff_workdir(
-      current_oid, include_untracked: false
-    ).deltas
+    if current_oid
+      actual_rugged_repository.diff_workdir(
+        current_oid, include_untracked: false
+      ).deltas
+    else
+      []
+    end
   end
 end
 
@@ -113,4 +128,41 @@ RSpec::Matchers.define :have_commit do |expected_commit|
   def norm(time)
     Time.new(time.to_i)
   end
+end
+
+RSpec::Matchers.define :be_synchronized_with do |expected|
+  match do |actual|
+    actual_rugged_repository = Rugged::Repository.new(actual.to_s)
+    actual_current_oid =
+      begin
+        actual_rugged_repository.head.target_id
+      rescue Rugged::ReferenceError
+        nil
+      end
+
+    expected_rugged_repository = Rugged::Repository.new(expected.to_s)
+    expected_current_oid =
+      begin
+        expected_rugged_repository.head.target_id
+      rescue Rugged::ReferenceError
+        nil
+      end
+
+    actual_walker = Rugged::Walker.new(actual_rugged_repository)
+    actual_walker.sorting(Rugged::SORT_DATE)
+    actual_walker.push(actual_rugged_repository.head.target)
+    @actual = ''
+    actual_walker.each { |x| @actual += "#{x.oid} #{x.message}\n" }
+
+    expected_walker = Rugged::Walker.new(expected_rugged_repository)
+    expected_walker.sorting(Rugged::SORT_DATE)
+    expected_walker.push(expected_rugged_repository.head.target)
+    @expected = ''
+    expected_walker.each { |x| @expected += "#{x.oid} #{x.message}\n" }
+
+    actual_current_oid == expected_current_oid
+  end
+
+  diffable
+  attr_reader :actual, :expected
 end

@@ -19,21 +19,32 @@ class GitFactory < FileTreeFactory
     # Override the .create so that repository tree is cleared and then
     # initialized before executing the commands in the block.
     #
-    # @param [Pathname] root_pathname
-    # @yield Block which be executed in the DSL context
+    # @overload create(root_pathname)
+    #   @param [Pathname] root_pathname
+    #   @yield Block which be executed in the DSL context
+    #
+    # @overload create(root_pathname, *init_args)
+    #   @param [Pathname] root_pathname
+    #   @param (see #init)
+    #   @yield Block which be executed in the DSL context
     #
     # @return [void]
-    def create(root_pathname, &block)
+    def create(root_pathname, *init_args, &block)
       instance = new(root_pathname)
       instance.clear
-      instance.init
+      instance.init(*init_args)
       instance.instance_eval(&block) if block
     end
   end
 
+  # @overload init
+  #
+  # @overload init(*args)
+  #   @param [Array] args only a :bare is supported at the moment
+  #
   # @return [void]
-  def init
-    Rugged::Repository.init_at(@root_pathname.to_s)
+  def init(*args)
+    Rugged::Repository.init_at(@root_pathname.to_s, *args)
 
     rugged_repository.config['user.name']  = GitFactory.default_name
     rugged_repository.config['user.email'] = GitFactory.default_email
@@ -42,14 +53,33 @@ class GitFactory < FileTreeFactory
   # @param (see #write)
   #
   # @return [void]
-  def add(*paths_and_options)
-    write(*paths_and_options)
+  def add(*paths_and_options) # rubocop:disable Metrics/AbcSize
+    paths    = paths_and_options.dup
+    options  = paths.last.is_a?(Hash) ? paths.pop : {}
+    filename = Pathname('').join(*paths).to_s
 
-    paths = paths_and_options
-    paths.pop if paths.last.is_a?(Hash)
-    index_write do |index|
-      index.add(Pathname('').join(*paths).to_s)
+    if rugged_repository.bare?
+      index_write do |index|
+        index.add(
+          path: filename,
+          oid:  rugged_repository.write(options[:string] || '', :blob),
+          mode: 0o100644
+        )
+      end
+    else
+      write(*paths_and_options)
+      index_write { |index| index.add(filename) }
     end
+  end
+
+  # @param [Array<String>] *paths
+  #
+  # @return [void]
+  def rm(*paths)
+    filename = Pathname('').join(*paths).to_s
+
+    index_write { |index| index.remove(filename) }
+    delete(*paths)
   end
 
   # @param [String] message
@@ -86,6 +116,21 @@ class GitFactory < FileTreeFactory
     end
 
     commit(message, options)
+  end
+
+  # @param [String] name
+  # @param [String] url
+  #
+  # @return [void]
+  def remote_create(name, url)
+    rugged_repository.remotes.create(name, url)
+  end
+
+  # @overload ad
+  def branch_create(name, starting_branch = 'master')
+    rugged_repository.create_branch(
+      name, rugged_repository.branches[starting_branch].target
+    )
   end
 
   ##############################################################################

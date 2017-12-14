@@ -7,7 +7,7 @@ Background:
       |new|
       |other|
 
-Scenario: Make commit a file to a repository
+Scenario: Add a file to the repository
   When I execute:
     """ruby
     GitSimple(local_repository_pathname)
@@ -30,7 +30,7 @@ Scenario: Remove a file from the repository
       |new|
       |other|
 
-Scenario: Make a commit with everything the working tree
+Scenario: Commit everything in the working tree
   When the 'existing' file is deleted
     And I execute:
       """ruby
@@ -41,6 +41,15 @@ Scenario: Make a commit with everything the working tree
   Then I see a commit with 'add all commit'
     And I see everything is committed
 
-Scenario: Revert a commit
-
-Scenario: Revert a file
+Scenario: Revert a single file
+  Given 'existing' is committed with 'commit 2'
+    And 'existing' is committed with 'commit 3'
+  When I execute:
+    """ruby
+    GitSimple(local_repository_pathname)
+      .bypass do |rugged, working_directory|
+        blob = rugged.blob_at(rugged.head.target.parents.first.oid, 'existing')
+        IO.write(working_directory.join('existing').to_s, blob.text) if blob
+      end
+    """
+  Then I see 'existing' contains 'commit 2'
