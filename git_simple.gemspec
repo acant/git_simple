@@ -1,5 +1,3 @@
-# coding: utf-8
-
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'git_simple/version'
@@ -31,7 +29,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rspec-timecop', '~> 0.3'
   spec.add_development_dependency 'rspec-tabular', '~> 0.1'
   spec.add_development_dependency 'cucumber',      '~> 2.4.0'
-  spec.add_development_dependency 'simplecov'
-  spec.add_development_dependency 'rubocop'
+  spec.add_development_dependency 'rubocop',       '0.50.0' # NOTE: Limited to ruby v2.0.0
   spec.add_development_dependency 'rubocop-rspec'
+  spec.add_development_dependency 'simplecov'
 end
