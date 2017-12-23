@@ -13,6 +13,8 @@ matrix:
   allow_failures:
     - rvm: ruby-head
   exclude:
+    - rvm: 2.0
+      os: osx
     - rvm: 2.4
       os: osx
     - rvm: ruby-head
