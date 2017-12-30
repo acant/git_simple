@@ -119,17 +119,20 @@ class GitFactory < FileTreeFactory
   end
 
   # @param [String] name
-  # @param [String] url
+  # @param [String] override_url
   #
-  # @return [void]
-  def remote_create(name, url)
+  # @return [Rugged::Remote]
+  def remote_create(name, override_url = nil)
+    url = override_url || "git://example.com/#{name}.git"
     rugged_repository.remotes.create(name, url)
   end
 
-  # @overload ad
-  def branch_create(name, starting_branch = 'master')
+  # @param [String] name
+  #
+  # @return [Rugged::Branch]
+  def branch_create(name)
     rugged_repository.create_branch(
-      name, rugged_repository.branches[starting_branch].target
+      name, rugged_repository.branches['master'].target
     )
   end
 

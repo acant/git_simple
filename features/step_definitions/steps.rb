@@ -51,7 +51,7 @@ end
 Given(/^a (remote|branch) called #{FILE_REGEX}$/) do |type, name|
   GitFactory.append(local_repository_pathname) do
     case type
-    when 'remote' then remote_create(name, "git://example.com/#{name}.git")
+    when 'remote' then remote_create(name)
     when 'branch' then branch_create(name)
     end
   end

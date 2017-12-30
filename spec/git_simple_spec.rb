@@ -330,8 +330,8 @@ RSpec.describe GitSimple do
     context 'with remotes' do
       before do
         GitFactory.create(repository_pathname) do
-          remote_create('remote1', 'http://example.com/remote1')
-          remote_create('remote2', 'http://example.com/remote2')
+          remote_create('remote1')
+          remote_create('remote2')
         end
       end
       it { is_expected.to eq(%w[remote1 remote2]) }
