@@ -3,11 +3,11 @@ require 'spec_helper'
 RSpec.describe GitSimple do
   subject(:git_simple) { described_class.new(repository_pathname) }
 
-  let(:repository_pathname) { Pathname('tmp').join('spec', 'repository') }
+  let(:current_directory)          { Pathname('tmp').join('spec') }
+  let(:repository_pathname)        { current_directory.join('repository') }
+  let(:remote_repository_pathname) { current_directory.join('remote_repository') }
 
-  before do
-    repository_pathname.dirname if repository_pathname.dirname.directory?
-  end
+  before { current_directory.rmtree if current_directory.directory? }
 
   describe 'initialization shortcut' do
     subject { GitSimple(:arg1, :arg2, :arg3) }
@@ -28,14 +28,23 @@ RSpec.describe GitSimple do
   end
 
   describe '#clone' do
-    subject { git_simple.clone(:remote_url) }
+    subject { git_simple.clone(pathname_or_remote_url) }
 
-    before do
-      expect(Rugged::Repository).to receive(:clone_at)
-        .with(:remote_url, repository_pathname.to_s)
+    before { GitFactory.create(remote_repository_pathname, :bare) }
+
+    context 'with pathname' do
+      let(:pathname_or_remote_url) { remote_repository_pathname.realpath }
+
+      it { is_expected.to eq(git_simple) }
+      its_side_effects_are { expect(repository_pathname).to exist }
     end
-    it { is_expected.to eq(git_simple) }
-    its_side_effects_are { expect(repository_pathname).to exist }
+
+    context 'with URL string' do
+      let(:pathname_or_remote_url) { "file://#{remote_repository_pathname.realpath}" }
+
+      it { is_expected.to eq(git_simple) }
+      its_side_effects_are { expect(repository_pathname).to exist }
+    end
   end
 
   describe '#add' do
@@ -238,7 +247,7 @@ RSpec.describe GitSimple do
     end
   end
 
-  describe '#push' do
+  xdescribe '#push' do
     subject { git_simple.push }
 
     context 'with no remote' do

@@ -27,10 +27,17 @@ class GitSimple
     self
   end
 
-  # @param [String]
+  # @param [#realpath, #to_s] pathname_or_remote_url
   #
   # @return [Git::Simple]
-  def clone(remote_url)
+  def clone(pathname_or_remote_url)
+    remote_url =
+      if pathname_or_remote_url.respond_to?(:realpath)
+        "file://#{pathname_or_remote_url.realpath}"
+      else
+        pathname_or_remote_url.to_s
+      end
+
     # raise if the pathname already exists
     @pathname.mkpath
     Rugged::Repository.clone_at(remote_url, @pathname.to_s)

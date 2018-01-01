@@ -23,10 +23,7 @@ Given(/^a remote repository accessible by (file|http|https|ssh)$/) do |protocol|
 end
 
 Given 'a local clone' do
-  Rugged::Repository.clone_at(
-    "file://#{remote_repository_pathname.realpath}",
-    local_repository_pathname.to_s
-  )
+  GitFactory.clone(local_repository_pathname, remote_repository_pathname)
 end
 
 Given(/^#{FILE_REGEX} is committed( in the remote repository)?(?: with #{FILE_REGEX})?$/) do |filename, remote_flag, content| # rubocop:disable Metrics/LineLength

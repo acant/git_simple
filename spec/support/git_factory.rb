@@ -35,6 +35,25 @@ class GitFactory < FileTreeFactory
       instance.init(*init_args)
       instance.instance_eval(&block) if block
     end
+
+    # @param [Pathname] root_pathname
+    # @param [#realpath, String] remote_path
+    # @yield Block which be executed in the DSL context
+    #
+    # @return [void]
+    def clone(root_pathname, remote_path, &block)
+      remote_url =
+        if remote_path.respond_to?(:realpath)
+          "file://#{remote_path.realpath}"
+        else
+          remote_path.to_s
+        end
+      instance = new(root_pathname)
+      instance.clear
+      root_pathname.mkpath
+      Rugged::Repository.clone_at(remote_url, root_pathname.to_s)
+      instance.instance_eval(&block) if block
+    end
   end
 
   # @overload init
