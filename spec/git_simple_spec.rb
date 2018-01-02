@@ -3,11 +3,11 @@ require 'spec_helper'
 RSpec.describe GitSimple do
   subject(:git_simple) { described_class.new(repository_pathname) }
 
-  let(:repository_pathname) { Pathname('tmp').join('spec', 'repository') }
+  let(:current_directory)          { Pathname('tmp').join('spec') }
+  let(:repository_pathname)        { current_directory.join('repository') }
+  let(:remote_repository_pathname) { current_directory.join('remote_repository') }
 
-  before do
-    repository_pathname.dirname if repository_pathname.dirname.directory?
-  end
+  before { current_directory.rmtree if current_directory.directory? }
 
   describe 'initialization shortcut' do
     subject { GitSimple(:arg1, :arg2, :arg3) }
@@ -214,14 +214,24 @@ RSpec.describe GitSimple do
     end
   end
 
-  xdescribe '#pull' do
+  describe '#pull' do
     subject { git_simple.pull }
 
     context 'with no remote' do
+      before { GitFactory.create(repository_pathname) }
       it { is_expected.to eq(git_simple) }
     end
 
     context 'with no changes' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare)
+        GitFactory.clone(remote_repository_pathname, repository_pathname)
+
+        GitFactory.append(remote_repository_pathname) do
+          add('file1', string: 'file1')
+          commit('remote filename file1 commit')
+        end
+      end
       it { is_expected.to eq(git_simple) }
     end
 
@@ -229,16 +239,16 @@ RSpec.describe GitSimple do
       it { is_expected.to eq(git_simple) }
     end
 
-    context 'with non-conflicting changes' do
+    xcontext 'with non-conflicting changes' do
       it { is_expected.to eq(git_simple) }
     end
 
-    context 'with conflicting changes' do
+    xcontext 'with conflicting changes' do
       it { is_expected.to eq(git_simple) }
     end
   end
 
-  describe '#push' do
+  xdescribe '#push' do
     subject { git_simple.push }
 
     context 'with no remote' do
@@ -278,6 +288,8 @@ RSpec.describe GitSimple do
       allow(Pathname).to receive(:new)
         .with(:workdir)
         .and_return(working_directory = instance_double(Pathname))
+      allow(working_directory).to receive(:cleanpath)
+        .and_return(working_directory)
 
       expect(rugged).to receive(:to_s)
       expect(working_directory).to receive(:to_s)

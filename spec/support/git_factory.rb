@@ -154,6 +154,10 @@ class GitFactory < FileTreeFactory
     )
   end
 
+  def rugged
+    rugged_repository
+  end
+
   ##############################################################################
 
   private
