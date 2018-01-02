@@ -1,5 +1,6 @@
 require 'git_simple/version'
 require 'git_simple/utils'
+require 'git_simple/rugged_wrapper'
 require 'rugged'
 require 'pathname'
 
@@ -45,19 +46,21 @@ class GitSimple
   #
   # @return [Git::Simple]
   def add(*args)
-    glob_to_index(args) do |index, relative_path|
+    wrapper.glob_to_index(args) do |index, relative_path|
       index.add(relative_path.to_s)
     end
+    self
   end
 
   # Add all changes in the working tree into the index.
   #
   # @return [Git::Simple]
   def add_all
-    index_write do |index|
+    wrapper.index_write do |index|
       index.add_all
       index.update_all
     end
+    self
   end
 
   # Remove files from the working tree and the index
@@ -66,10 +69,11 @@ class GitSimple
   #
   # @return [Git::Simple]
   def rm(*args)
-    glob_to_index(args) do |index, relative_path, realpath|
+    wrapper.glob_to_index(args) do |index, relative_path, realpath|
       index.remove(relative_path.to_s)
       realpath.delete
     end
+    self
   end
 
   # @param [String] message
@@ -77,42 +81,47 @@ class GitSimple
   # @option options [String] :name for the author and committer
   # @option options [String] :email for the author and committer
   #
-  # @raise (see #commit_create)
+  # @raise (see GitSimple::RuggedWrapper#commit_create)
   #
   # @return [Git::Simple]
   def commit(message, options = {})
-    index_write do
-      commit_create(
+    wrapper.index_write do
+      wrapper.commit_create(
         message,
         rugged.index.write_tree,
-        head_target,
+        wrapper.head_target,
         options
       )
     end
+    self
   end
 
   # @param [Hash] options
   # @option options [String] :name for the author and committer
   # @option options [String] :email for the author and committer
   #
-  # @raise (see #commit_create)
+  # @raise (see GitSimple::RuggedWrapper#commit_create)
   #
   # @return [Git::Simple]
   def pull(options = {}) # rubocop:disable Metrics/AbcSize
-    head_remote.fetch
+    return self unless wrapper.head_remote
 
-    merge_analysis = rugged.merge_analysis(head_remote_branch.name)
+    wrapper.head_remote.fetch
+
+    return self unless wrapper.head_branch
+
+    merge_analysis = rugged.merge_analysis(wrapper.head_remote_branch.name)
     if merge_analysis.include?(:fastforward)
-      rugged.references.update(head_ref, head_remote_branch.target_id)
+      rugged.references.update(wrapper.head_ref, wrapper.head_remote_branch.target_id)
       rugged.checkout_head(strategy: :force)
     elsif merge_analysis.include?(:normal)
-      ours   = head_target
-      theirs = head_remote_branch.target
+      ours   = wrapper.head_target
+      theirs = wrapper.head_remote_branch.target
       base   = rugged.rev_parse(rugged.merge_base(ours, theirs))
       index  = ours.tree.merge(theirs.tree, base.tree)
 
-      commit_create(
-        "Merge branch '#{head_branch.name}' of #{head_remote.url}",
+      wrapper.commit_create(
+        "Merge branch '#{wrapper.head_branch.name}' of #{wrapper.head_remote.url}",
         index.write_tree(rugged),
         [ours, theirs],
         options
@@ -125,9 +134,9 @@ class GitSimple
 
   # @return [Git::Simple]
   def push
-    return self unless head_remote
+    return self unless wrapper.head_remote
 
-    head_remote.push([head_ref])
+    wrapper.head_remote.push([wrapper.head_ref])
     self
   end
 
@@ -138,7 +147,7 @@ class GitSimple
   #
   # @return [Git::Simple]
   def bypass
-    yield(rugged, working_directory)
+    yield(rugged, wrapper.working_directory)
     self
   end
 
@@ -152,13 +161,13 @@ class GitSimple
   #
   # @return [Enumerable<Rugged::Commit>]
   def log(*args)
-    return [] unless head_target
+    return [] unless wrapper.head_target
 
     path = args.any? ? Utils.to_pathname(*args).to_s : nil
 
     walker = Rugged::Walker.new(rugged)
     walker.sorting(Rugged::SORT_DATE)
-    walker.push(head_target)
+    walker.push(wrapper.head_target)
     walker.select { |x| path.nil? || x.diff(paths: [path]).size.nonzero? }
   end
 
@@ -187,117 +196,14 @@ class GitSimple
 
   private
 
+  # @return [GitSimple::RuggedWrapper]
+  def wrapper
+    @rugged_wrapper ||= RuggedWrapper.new(@pathname)
+  end
+
   # @return [Rugged::Repository]
   def rugged
-    @rugged ||= Rugged::Repository.discover(@pathname.to_s)
-  end
-
-  # @return [Pathname]
-  def working_directory
-    Pathname.new(rugged.workdir)
-  end
-
-  # @return [nil]
-  # @return [Rugged::Commit]
-  def head_target
-    return if rugged.empty?
-    rugged.head.target
-  end
-
-  # @return [String]
-  def head_ref
-    rugged.head.name
-  end
-
-  # @return [Rugged::Branch]
-  def head_branch
-    rugged.branches[head_ref]
-  end
-
-  # @return [nil]
-  # @return [Rugged::Remote]
-  def head_remote
-    head_branch.remote || rugged.remotes['origin']
-  end
-
-  # @return [nil]
-  # @return [Rugged::Branch]
-  def head_remote_branch
-    head_branch.upstream || rugged.branches["#{head_remote.name}/#{head_branch.name}"]
-  end
-
-  # @param [Hash] options
-  # @option options [String] :name for the author and committer
-  # @option options [String] :email for the author and committer
-  #
-  # @raise [GitSimple::Error] if name or email cannot be found
-  #
-  # @return [Hash]
-  def author_now(options = {})
-    result = {
-      name:  options[:name] || rugged.config['user.name'],
-      email: options[:email] || rugged.config['user.email'],
-      time:  Time.now
-    }
-    raise(GitSimple::Error, 'Cannot commit without a user name') unless result[:name]
-    raise(GitSimple::Error, 'Cannot commit without a user email') unless result[:email]
-
-    result
-  end
-
-  # @param [String] message
-  # @param [Rugged::Tree]  tree
-  # @param [Rugged::Commit, Array<Rugged::Commit>] parents
-  # @param [Hash] options
-  # @option options [String] :name for the author and committer
-  # @option options [String] :email for the author and committer
-  #
-  # @raise (see #author_now)
-  #
-  # @return [Rugged::Commit]
-  def commit_create(message, tree, parents, options = {})
-    author = author_now(options)
-    Rugged::Commit.create(
-      rugged,
-      tree:       tree,
-      author:     author,
-      committer:  author,
-      message:    message,
-      parents:    [parents].flatten.compact,
-      update_ref: 'HEAD'
-    )
-  end
-
-  # "Open" the index for writing by reloading it, and the ensure that the
-  # modified index is written out to disk right away.
-  #
-  # @yieldparam [Rugged::Index] index
-  #
-  # @return [GitSimple]
-  def index_write
-    rugged.index.reload
-    yield(rugged.index)
-    rugged.index.write
-
-    self
-  end
-
-  # Glob the args and open the index for writing at the same time.
-  #
-  # @param [Array<String, Array<String>, Pathname>] *args
-  # @yieldparam [Rugged::Index] index
-  # @yieldparam [Pathname] relative_path
-  # @yieldparam [Pathname] realpath
-  #
-  # @return [GitSimple]
-  def glob_to_index(args)
-    index_write do |index|
-      Utils.glob_to_pathnames(
-        args, working_directory.realpath
-      ) do |relative_path, realpath|
-        yield(index, relative_path, realpath)
-      end
-    end
+    wrapper.rugged
   end
 end
 
