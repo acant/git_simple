@@ -13,8 +13,10 @@ require 'pathname'
 #     .commit('Made some changes', name: 'Art T. Fish', email: 'afish@example.com')
 #
 class GitSimple
-  class Error < StandardError
-  end
+  class Error < StandardError ; end
+  class MergeConflict < Error ; end
+  class ConflictNotResolved < Error ; end
+  class NoCommonCommit < Error ; end
 
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)
@@ -102,24 +104,55 @@ class GitSimple
   # @option options [String] :name for the author and committer
   # @option options [String] :email for the author and committer
   #
+  # @yieldparam [Rugged::Index] merge_index
+  # @yieldparam [Rugged] rugged
+  # @yieldparam [Pathname] working_directory
+  #
+  # @raise GitSimple::MergeConflict
+  # @raise GitSimple::ConflictNotResolved
+  # @raise GitSimple::NoCommonCommit
   # @raise (see #commit_create)
   #
   # @return [Git::Simple]
   def pull(options = {}) # rubocop:disable Metrics/AbcSize
+    return self unless head_remote
     head_remote.fetch
+
+    return self if head_remote_branch.nil?
+
+    if head_branch.nil?
+      rugged.checkout(head_remote_branch)
+      return self
+    end
 
     merge_analysis = rugged.merge_analysis(head_remote_branch.name)
     if merge_analysis.include?(:fastforward)
       rugged.references.update(head_ref, head_remote_branch.target_id)
       rugged.checkout_head(strategy: :force)
     elsif merge_analysis.include?(:normal)
-      ours   = head_target
-      theirs = head_remote_branch.target
-      base   = rugged.rev_parse(rugged.merge_base(ours, theirs))
+      ours       = head_target
+      theirs     = head_remote_branch.target
+      merge_base = rugged.merge_base(ours, theirs)
+      raise(NoCommonCommit) unless merge_base
+
+      base = rugged.rev_parse(merge_base)
       index  = ours.tree.merge(theirs.tree, base.tree)
 
+      commit_message =
+        if index.conflicts?
+          raise(MergeConflict) unless block_given?
+
+          message = yield(index, rugged, working_directory)
+          raise(MergeConflict) unless message
+
+          index.conflict_cleanup
+          message
+        else
+          "Merge branch '#{head_branch.name}' of #{head_remote.url}"
+        end
+
       commit_create(
-        "Merge branch '#{head_branch.name}' of #{head_remote.url}",
+        commit_message,
         index.write_tree(rugged),
         [ours, theirs],
         options
@@ -132,6 +165,7 @@ class GitSimple
 
   # @return [Git::Simple]
   def push
+    return self if rugged.empty?
     return self unless head_remote
 
     head_remote.push([head_ref])
@@ -245,27 +279,39 @@ class GitSimple
   def head_target
     return if rugged.empty?
     rugged.head.target
+  rescue Rugged::ReferenceError
+    nil
   end
 
   # @return [String]
   def head_ref
+    return 'refs/heads/master' if rugged.empty? || rugged.head.nil?
     rugged.head.name
+  rescue Rugged::ReferenceError
+    nil
   end
 
+  # @return [nil]
   # @return [Rugged::Branch]
   def head_branch
+    return unless head_ref
     rugged.branches[head_ref]
   end
 
   # @return [nil]
   # @return [Rugged::Remote]
   def head_remote
-    head_branch.remote || rugged.remotes['origin']
+    remote_origin = rugged.remotes['origin']
+
+    return remote_origin unless head_branch
+    head_branch.remote || remote_origin
   end
 
   # @return [nil]
   # @return [Rugged::Branch]
   def head_remote_branch
+    return unless head_remote
+    return rugged.branches["#{head_remote.name}/master"] unless head_branch
     head_branch.upstream || rugged.branches["#{head_remote.name}/#{head_branch.name}"]
   end
 

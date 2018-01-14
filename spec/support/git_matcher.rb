@@ -40,6 +40,26 @@ RSpec::Matchers.define :have_any_changes do
   end
 end
 
+RSpec::Matchers.define :have_commit_count do
+  match do |actual|
+    begin
+      repository = Rugged::Repository.new(actual.to_s)
+      if repository.empty?
+        0
+      else
+        walker = Rugged::Walker.new(repository)
+        walker.sorting(Rugged::SORT_DATE)
+        walker.push(repository.head.target)
+        count = 0
+        walker.each { count += 1 }
+        count
+      end
+    rescue # rubocop:disable Lint/RescueWithoutErrorClass
+      0
+    end
+  end
+end
+
 RSpec::Matchers.define :have_removed do |expected|
   match do |actual|
     actual_rugged_repository = Rugged::Repository.new(actual.to_s)
@@ -148,17 +168,45 @@ RSpec::Matchers.define :be_synchronized_with do |expected|
         nil
       end
 
-    actual_walker = Rugged::Walker.new(actual_rugged_repository)
-    actual_walker.sorting(Rugged::SORT_DATE)
-    actual_walker.push(actual_rugged_repository.head.target)
-    @actual = ''
-    actual_walker.each { |x| @actual += "#{x.oid} #{x.message}\n" }
+    @actual =
+      if actual_rugged_repository.empty?
+        'no commits in repository'
+      else
+        begin
+          if actual_rugged_repository.head.target.nil?
+            'no commits at head'
+          else
+            actual_walker = Rugged::Walker.new(actual_rugged_repository)
+            actual_walker.sorting(Rugged::SORT_DATE)
+            actual_walker.push(actual_rugged_repository.head.target)
+            message = ''
+            actual_walker.each { |x| message += "#{x.oid} #{x.message}\n" }
+            message
+          end
+        rescue Rugged::ReferenceError
+          'no head checked out'
+        end
+      end
 
-    expected_walker = Rugged::Walker.new(expected_rugged_repository)
-    expected_walker.sorting(Rugged::SORT_DATE)
-    expected_walker.push(expected_rugged_repository.head.target)
-    @expected = ''
-    expected_walker.each { |x| @expected += "#{x.oid} #{x.message}\n" }
+    @expected =
+      if expected_rugged_repository.empty?
+        'no commits in repository'
+      else
+        begin
+          if expected_rugged_repository.head.target.nil?
+            'no commits at head'
+          else
+            expected_walker = Rugged::Walker.new(expected_rugged_repository)
+            expected_walker.sorting(Rugged::SORT_DATE)
+            expected_walker.push(expected_rugged_repository.head.target)
+            message = ''
+            expected_walker.each { |x| message += "#{x.oid} #{x.message}\n" }
+            message
+          end
+        rescue Rugged::ReferenceError
+          'no head checked out'
+        end
+      end
 
     actual_current_oid == expected_current_oid
   end

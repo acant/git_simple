@@ -223,27 +223,228 @@ RSpec.describe GitSimple do
     end
   end
 
-  xdescribe '#pull' do
+  describe '#pull' do
     subject { git_simple.pull }
 
     context 'with no remote' do
+      before { GitFactory.create(repository_pathname) }
       it { is_expected.to eq(git_simple) }
     end
 
-    context 'with no changes' do
-      it { is_expected.to eq(git_simple) }
+    context 'with no initial commits' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare)
+        GitFactory.clone(repository_pathname, remote_repository_pathname)
+      end
+
+      describe 'and no new commits' do
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are do
+          expect(repository_pathname).to be_synchronized_with(remote_repository_pathname)
+          expect(repository_pathname).to have_commit_count(0)
+        end
+      end
+
+      describe 'and new remote commits' do
+        before do
+          GitFactory.append(remote_repository_pathname) do
+            add('file', string: 'file')
+            commit('remote filename file commit')
+          end
+        end
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are do
+          expect(repository_pathname).to be_synchronized_with(remote_repository_pathname)
+          expect(repository_pathname).to have_commit_count(1)
+          expect(repository_pathname).to have_commit(:head)
+            .with_message('remote filename file commit')
+        end
+      end
+
+      describe 'and new local commits' do
+        before do
+          GitFactory.append(repository_pathname) do
+            add('file', string: 'file')
+            commit('local filename file commit')
+          end
+        end
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are do
+          expect(repository_pathname).not_to be_synchronized_with(remote_repository_pathname)
+          expect(repository_pathname).to have_commit_count(1)
+          expect(repository_pathname).to have_commit(:head)
+            .with_message('local filename file commit')
+        end
+      end
+
+      describe 'and new non-conflicting commits' do
+        before do
+          GitFactory.append(remote_repository_pathname) do
+            add('file1', string: 'file1')
+            commit('remote filename file1 commit')
+          end
+          GitFactory.append(repository_pathname) do
+            add('file2', string: 'file2')
+            commit('local filename file2 commit')
+          end
+        end
+        it { expect { subject }.to raise_error(GitSimple::NoCommonCommit) }
+        # TODO: Consider adding support for checking side effects on a raise,
+        # because I want to verify that nothing was written to the disk
+      end
+
+      describe 'and new conflicting changes' do
+        before do
+          GitFactory.append(remote_repository_pathname) do
+            add('file', string: "line1\nline2\nline3")
+            commit('remote filename file commit')
+          end
+          GitFactory.append(repository_pathname) do
+            add('file', string: "foobar1\nline2\nfoobar3")
+            commit('local filename file commit')
+          end
+        end
+
+        context 'with no resolution method' do
+          it { expect { subject }.to raise_error(GitSimple::NoCommonCommit) }
+          # TODO: Consider adding support for checking side effects on a raise,
+          # because I want to verify that nothing was written to the disk
+        end
+
+        context 'with a resolution block' do
+          subject { git_simple.pull { |rugged, working_directory| :noop } }
+
+          it { expect { subject }.to raise_error(GitSimple::NoCommonCommit) }
+          # TODO: Consider adding support for checking side effects on a raise,
+          # because I want to verify that nothing was written to the disk
+        end
+      end
     end
 
-    context 'with only remote changes' do
-      it { is_expected.to eq(git_simple) }
-    end
+    context 'with initial remote commit' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare) do
+          add('file1', string: 'file1')
+          commit('remote filename file1 commit')
+        end
+        GitFactory.clone(repository_pathname, remote_repository_pathname)
+      end
 
-    context 'with non-conflicting changes' do
-      it { is_expected.to eq(git_simple) }
-    end
+      describe 'and no new commits' do
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are do
+          expect(repository_pathname).to be_synchronized_with(remote_repository_pathname)
+        end
+      end
 
-    context 'with conflicting changes' do
-      it { is_expected.to eq(git_simple) }
+      describe 'and new remote commits' do
+        before do
+          GitFactory.append(remote_repository_pathname) do
+            add('file2', string: 'file2')
+            commit('remote filename file2 commit')
+          end
+        end
+        it { is_expected.to eq(git_simple) }
+      end
+
+      describe 'and new local commits' do
+        before do
+          GitFactory.append(repository_pathname) do
+            add('file2', string: 'file2')
+            commit('local filename file2 commit')
+          end
+        end
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are do
+          expect(repository_pathname).not_to be_synchronized_with(remote_repository_pathname)
+          expect(repository_pathname).to have_commit_count(2)
+          expect(repository_pathname).to have_commit(:head)
+            .with_message('local filename file2 commit')
+        end
+      end
+
+      describe 'and new non-conflicting commits' do
+        before do
+          GitFactory.append(remote_repository_pathname) do
+            add('file2', string: 'file2')
+            commit('remote filename file2 commit')
+          end
+          GitFactory.append(repository_pathname) do
+            add('file3', string: 'file3')
+            commit('local filename file3 commit')
+          end
+        end
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are do
+          expect(repository_pathname).not_to be_synchronized_with(remote_repository_pathname)
+          expect(repository_pathname).not_to have_any_changes
+          expect(repository_pathname).to have_commit_count(4)
+          expect(repository_pathname).to have_commit(:head).with_message(
+            "Merge branch 'master' of file://#{remote_repository_pathname.realpath}"
+          )
+          expect(repository_pathname.join('file1')).to exist
+          expect(repository_pathname.join('file2')).to exist
+          expect(repository_pathname.join('file3')).to exist
+        end
+      end
+
+      describe 'and new conflicting changes' do
+        before do
+          GitFactory.append(remote_repository_pathname) do
+            add('file1', string: "line1\nline2\nline3")
+            commit('remote filename file1 commit')
+          end
+          GitFactory.append(repository_pathname) do
+            add('file1', string: "foobar1\nline2\nfoobar3")
+            commit('local filename file1 commit')
+          end
+        end
+
+        context 'with no resolution method' do
+          it { expect { subject }.to raise_error(GitSimple::MergeConflict) }
+          # TODO: Consider adding support for checking side effects on a raise,
+          # because I want to verify that nothing was written to the disk
+        end
+
+        context 'with a resolution block which does not fix the conflict' do
+          subject { git_simple.pull { nil } }
+
+          it { expect { subject }.to raise_error(GitSimple::MergeConflict) }
+          # TODO: Consider adding support for checking side effects on a raise,
+          # because I want to verify that nothing was written to the disk
+        end
+
+        context 'with a resolution block which fixes the conflict' do
+          subject do
+            git_simple.pull do |merge_index, rugged, working_directory|
+              merge_index.conflicts.each do |x|
+                merge_index.add(
+                  path: x[:ours][:path],
+                  oid:  rugged.write(
+                    "theirs: #{Rugged::Blob.lookup(rugged, x[:theirs][:oid]).content}" \
+                    " ours: #{Rugged::Blob.lookup(rugged, x[:ours][:oid]).content}",
+                    :blob
+                  ),
+                  mode: x[:ours][:mode]
+                )
+              end
+              'Conflict commit message'
+            end
+          end
+
+          it { is_expected.to eq(git_simple) }
+          its_side_effects_are do
+            expect(repository_pathname.join('file1').read).to eq(
+              "theirs: line1\nline2\nline3 ours: foobar1\nline2\nfoobar3"
+            )
+            expect(repository_pathname).not_to have_any_changes
+            expect(repository_pathname).to have_commit_count(3)
+            expect(repository_pathname).to have_commit(:head).with_message(
+              'Conflict commit message'
+            )
+          end
+        end
+      end
     end
   end
 

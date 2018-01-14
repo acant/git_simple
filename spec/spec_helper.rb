@@ -1,6 +1,7 @@
 require 'bundler/setup'
 require 'rspec/timecop'
 require 'rspec/tabular'
+require 'pp'
 Dir[File.dirname(__FILE__) + '/support/**/*.rb'].each { |f| require f }
 require 'simplecov'
 SimpleCov.start
