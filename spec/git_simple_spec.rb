@@ -265,10 +265,11 @@ RSpec.describe GitSimple do
   describe '#bypass' do
     subject do
       git_simple.bypass do |rugged, working_directory|
-        rugged.to_s
-        working_directory.to_s
+        tester.test(rugged, working_directory)
       end
     end
+
+    let(:tester) { double }
 
     before do
       allow(Rugged::Repository).to receive(:discover)
@@ -279,8 +280,7 @@ RSpec.describe GitSimple do
         .with(:workdir)
         .and_return(working_directory = instance_double(Pathname))
 
-      expect(rugged).to receive(:to_s)
-      expect(working_directory).to receive(:to_s)
+      expect(tester).to receive(:test).with(rugged, working_directory)
     end
 
     it { is_expected.to eq(git_simple) }
