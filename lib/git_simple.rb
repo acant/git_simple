@@ -169,6 +169,42 @@ class GitSimple
     walker.select { |x| path.nil? || x.diff(paths: [path]).size.nonzero? }
   end
 
+  # @return [String]
+  def inspect
+    result = "Working directory: #{working_directory}\n"
+    result << '  HEAD:'
+    begin
+      result << " #{rugged.head.name}\n"
+    rescue Rugged::ReferenceError
+      result << " none\n"
+    end
+
+    result << 'Remotes:'
+    if rugged.remotes.none?
+      result << " none\n"
+    else
+      result << "\n"
+      rugged.remotes.each { |x| result << "  * #{x.name} #{x.url}\n" }
+    end
+
+    result += 'Branches:'
+    if rugged.branches.none?
+      result << " none\n"
+    else
+      result << "\n"
+      rugged.branches.each do |branch|
+        result << "  * #{branch.name}"
+        if branch.upstream
+          result << " (upstream: #{branch.upstream.name})\n"
+        else
+          result << "\n"
+        end
+      end
+    end
+
+    result
+  end
+
   # @return [Array<String>]
   def remote_names
     rugged.remotes.map(&:name)

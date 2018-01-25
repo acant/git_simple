@@ -328,6 +328,48 @@ RSpec.describe GitSimple do
     end
   end
 
+  describe '#inspect' do
+    subject { git_simple.inspect }
+
+    context 'with initialized repo' do
+      before { GitFactory.create(repository_pathname) }
+      it do
+        is_expected.to eq(
+          <<-EOS.gsub(/^ {12}/, '')
+            Working directory: #{repository_pathname.realpath}/
+              HEAD: none
+            Remotes: none
+            Branches: none
+          EOS
+        )
+      end
+    end
+
+    context 'with EVERYTHING' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare) do
+          add('existing')
+          commit('remote commit')
+        end
+        GitFactory.clone(repository_pathname, remote_repository_pathname)
+      end
+
+      it do
+        is_expected.to eq(
+          <<-EOS.gsub(/^ {12}/, '')
+            Working directory: #{repository_pathname.realpath}/
+              HEAD: refs/heads/master
+            Remotes:
+              * origin file://#{remote_repository_pathname.realpath}
+            Branches:
+              * master (upstream: origin/master)
+              * origin/master
+          EOS
+        )
+      end
+    end
+  end
+
   describe '#remote_names' do
     subject { git_simple.remote_names }
 
