@@ -448,27 +448,79 @@ RSpec.describe GitSimple do
     end
   end
 
-  xdescribe '#push' do
+  describe '#push' do
     subject { git_simple.push }
 
     context 'with no remote' do
+      before { GitFactory.create(repository_pathname) }
       it { is_expected.to eq(git_simple) }
     end
 
-    xcontext 'with no changes' do
+    context 'with no commits' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare)
+        GitFactory.clone(repository_pathname, remote_repository_pathname)
+      end
       it { is_expected.to eq(git_simple) }
     end
 
-    xcontext 'with local changes' do
+    context 'with only local commits' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare)
+        GitFactory.clone(repository_pathname, remote_repository_pathname) do
+          add('file1', string: 'file1')
+          commit('remote filename file1 commit')
+        end
+      end
       it { is_expected.to eq(git_simple) }
     end
 
-    xcontext 'with remote changes' do
+    context 'with only remote commits' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare) do
+          add('file1', string: 'file1')
+          commit('remote filename file1 commit')
+        end
+        GitFactory.clone(repository_pathname, remote_repository_pathname)
+      end
       it { is_expected.to eq(git_simple) }
     end
 
-    xcontext 'with remote and local changes' do
+    context 'with remote commit and local changes' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare) do
+          add('file1', string: 'file1')
+          commit('remote filename file1 commit')
+        end
+        GitFactory.clone(repository_pathname, remote_repository_pathname) do
+          add('file2', string: 'file2')
+          commit('local file2 commit')
+        end
+      end
       it { is_expected.to eq(git_simple) }
+    end
+
+    context 'with conflicting remote and local commit' do
+      before do
+        GitFactory.create(remote_repository_pathname, :bare) do
+          add('file1', string: 'file1')
+          commit('remote filename file1 commit')
+        end
+        GitFactory.clone(repository_pathname, remote_repository_pathname) do
+          add('file2', string: 'file2')
+          commit('local file2 commit')
+        end
+        GitFactory.append(remote_repository_pathname) do
+          add('file3', string: 'file3')
+          commit('remote filename file3 commit')
+        end
+      end
+      it do
+        expect { subject }.to raise_error(
+          GitSimple::PushError,
+          'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally.'
+        )
+      end
     end
   end
 

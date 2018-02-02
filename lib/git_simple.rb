@@ -17,6 +17,7 @@ class GitSimple
   class MergeConflict < Error ; end
   class ConflictNotResolved < Error ; end
   class NoCommonCommit < Error ; end
+  class PushError < Error ; end
 
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)
@@ -170,6 +171,8 @@ class GitSimple
 
     head_remote.push([head_ref])
     self
+  rescue Rugged::Error => exception
+    raise(PushError, exception.message)
   end
 
   # Allow direct access to the Rugged object.
