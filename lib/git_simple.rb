@@ -13,11 +13,11 @@ require 'pathname'
 #     .commit('Made some changes', name: 'Art T. Fish', email: 'afish@example.com')
 #
 class GitSimple
-  class Error < StandardError ; end
-  class MergeConflict < Error ; end
-  class ConflictNotResolved < Error ; end
-  class NoCommonCommit < Error ; end
-  class PushError < Error ; end
+  class Error < StandardError; end
+  class MergeConflict < Error; end
+  class ConflictNotResolved < Error; end
+  class NoCommonCommit < Error; end
+  class PushError < Error; end
 
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)
@@ -115,11 +115,11 @@ class GitSimple
   # @raise (see #commit_create)
   #
   # @return [Git::Simple]
-  def pull(options = {}) # rubocop:disable Metrics/AbcSize
+  def pull(options = {})
     return self unless head_remote
     head_remote.fetch
 
-    return self if head_remote_branch.nil?
+    return self unless head_remote_branch
 
     if head_branch.nil?
       rugged.checkout(head_remote_branch)
@@ -136,8 +136,8 @@ class GitSimple
       merge_base = rugged.merge_base(ours, theirs)
       raise(NoCommonCommit) unless merge_base
 
-      base = rugged.rev_parse(merge_base)
-      index  = ours.tree.merge(theirs.tree, base.tree)
+      base  = rugged.rev_parse(merge_base)
+      index = ours.tree.merge(theirs.tree, base.tree)
 
       commit_message =
         if index.conflicts?
@@ -209,12 +209,7 @@ class GitSimple
   # @return [String]
   def inspect
     result = "Working directory: #{working_directory}\n"
-    result << '  HEAD:'
-    begin
-      result << " #{rugged.head.name}\n"
-    rescue Rugged::ReferenceError
-      result << " none\n"
-    end
+    result << "  HEAD: #{head_ref}\n"
 
     result << 'Remotes:'
     if rugged.remotes.none?
@@ -224,18 +219,15 @@ class GitSimple
       rugged.remotes.each { |x| result << "  * #{x.name} #{x.url}\n" }
     end
 
-    result += 'Branches:'
+    result << 'Branches:'
     if rugged.branches.none?
       result << " none\n"
     else
       result << "\n"
       rugged.branches.each do |branch|
         result << "  * #{branch.name}"
-        if branch.upstream
-          result << " (upstream: #{branch.upstream.name})\n"
-        else
-          result << "\n"
-        end
+        result << " (upstream: #{branch.upstream.name})" if branch.upstream
+        result << "\n"
       end
     end
 
@@ -280,7 +272,6 @@ class GitSimple
   # @return [nil]
   # @return [Rugged::Commit]
   def head_target
-    return if rugged.empty?
     rugged.head.target
   rescue Rugged::ReferenceError
     nil
@@ -288,16 +279,14 @@ class GitSimple
 
   # @return [String]
   def head_ref
-    return 'refs/heads/master' if rugged.empty? || rugged.head.nil?
     rugged.head.name
   rescue Rugged::ReferenceError
-    nil
+    'refs/heads/master'
   end
 
   # @return [nil]
   # @return [Rugged::Branch]
   def head_branch
-    return unless head_ref
     rugged.branches[head_ref]
   end
 

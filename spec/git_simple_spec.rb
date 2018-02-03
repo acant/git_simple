@@ -9,6 +9,10 @@ RSpec.describe GitSimple do
 
   before { current_directory.rmtree if current_directory.directory? }
 
+  def is_expected_to_raise_error(*args)
+    expect { subject }.to raise_error(*args)
+  end
+
   describe 'initialization shortcut' do
     subject { GitSimple(:arg1, :arg2, :arg3) }
 
@@ -61,7 +65,6 @@ RSpec.describe GitSimple do
     end
 
     it { is_expected.to eq(git_simple) }
-
     its_side_effects_are do
       expect(repository_pathname).to have_indexed('file1')
       expect(repository_pathname).to have_indexed('file2')
@@ -92,7 +95,6 @@ RSpec.describe GitSimple do
     end
 
     it { is_expected.to eq(git_simple) }
-
     its_side_effects_are do
       expect(repository_pathname).not_to have_indexed('deleted')
       expect(repository_pathname).to have_removed('existing')
@@ -115,13 +117,9 @@ RSpec.describe GitSimple do
         write('not_removed')
         commit_all('remote commit')
       end
-
-      expect(described_class::Utils).to receive(:glob_to_pathnames) # rubocop:disable LineLength
-        .and_call_original
     end
 
     it { is_expected.to eq(git_simple) }
-
     its_side_effects_are do
       expect(repository_pathname).to have_removed('file1')
       expect(repository_pathname).to have_removed('file2')
@@ -169,7 +167,6 @@ RSpec.describe GitSimple do
         end
 
         it { is_expected.to eq(git_simple) }
-
         its_side_effects_are do
           expect(repository_pathname).to have_commit(:head)
             .with_message('new_commit')
@@ -192,7 +189,6 @@ RSpec.describe GitSimple do
         end
 
         it { is_expected.to eq(git_simple) }
-
         its_side_effects_are do
           expect(repository_pathname).to have_commit(:head)
             .with_message('new_commit')
@@ -288,7 +284,7 @@ RSpec.describe GitSimple do
             commit('local filename file2 commit')
           end
         end
-        it { expect { subject }.to raise_error(GitSimple::NoCommonCommit) }
+        it { is_expected_to_raise_error(GitSimple::NoCommonCommit) }
         # TODO: Consider adding support for checking side effects on a raise,
         # because I want to verify that nothing was written to the disk
       end
@@ -306,15 +302,15 @@ RSpec.describe GitSimple do
         end
 
         context 'with no resolution method' do
-          it { expect { subject }.to raise_error(GitSimple::NoCommonCommit) }
+          it { is_expected_to_raise_error(GitSimple::NoCommonCommit) }
           # TODO: Consider adding support for checking side effects on a raise,
           # because I want to verify that nothing was written to the disk
         end
 
         context 'with a resolution block' do
-          subject { git_simple.pull { |rugged, working_directory| :noop } }
+          subject { git_simple.pull { |_rugged, _working_directory| :noop } }
 
-          it { expect { subject }.to raise_error(GitSimple::NoCommonCommit) }
+          it { is_expected_to_raise_error(GitSimple::NoCommonCommit) }
           # TODO: Consider adding support for checking side effects on a raise,
           # because I want to verify that nothing was written to the disk
         end
@@ -401,7 +397,7 @@ RSpec.describe GitSimple do
         end
 
         context 'with no resolution method' do
-          it { expect { subject }.to raise_error(GitSimple::MergeConflict) }
+          it { is_expected_to_raise_error(GitSimple::MergeConflict) }
           # TODO: Consider adding support for checking side effects on a raise,
           # because I want to verify that nothing was written to the disk
         end
@@ -409,14 +405,14 @@ RSpec.describe GitSimple do
         context 'with a resolution block which does not fix the conflict' do
           subject { git_simple.pull { nil } }
 
-          it { expect { subject }.to raise_error(GitSimple::MergeConflict) }
+          it { is_expected_to_raise_error(GitSimple::MergeConflict) }
           # TODO: Consider adding support for checking side effects on a raise,
           # because I want to verify that nothing was written to the disk
         end
 
         context 'with a resolution block which fixes the conflict' do
           subject do
-            git_simple.pull do |merge_index, rugged, working_directory|
+            git_simple.pull do |merge_index, rugged, _working_directory|
               merge_index.conflicts.each do |x|
                 merge_index.add(
                   path: x[:ours][:path],
@@ -516,7 +512,7 @@ RSpec.describe GitSimple do
         end
       end
       it do
-        expect { subject }.to raise_error(
+        is_expected_to_raise_error(
           GitSimple::PushError,
           'cannot push because a reference that you are trying to update on the remote contains commits that are not present locally.'
         )
@@ -531,21 +527,23 @@ RSpec.describe GitSimple do
       end
     end
 
-    let(:tester) { double }
+    let(:tester) { spy('tester') } # rubocop:disable RSpec/VerifiedDoubles
+    let(:rugged) { instance_double(Rugged::Repository) }
 
     before do
       allow(Rugged::Repository).to receive(:discover)
         .with(repository_pathname.to_s)
-        .and_return(rugged = instance_double(Rugged::Repository))
+        .and_return(rugged)
       allow(rugged).to receive(:workdir).and_return(:workdir)
       allow(Pathname).to receive(:new)
         .with(:workdir)
-        .and_return(working_directory = instance_double(Pathname))
-
-      expect(tester).to receive(:test).with(rugged, working_directory)
+        .and_return(:working_directory)
     end
 
     it { is_expected.to eq(git_simple) }
+    its_side_effects_are do
+      expect(tester).to have_received(:test).with(rugged, :working_directory)
+    end
   end
 
   describe '#log' do
@@ -586,11 +584,11 @@ RSpec.describe GitSimple do
 
     context 'with initialized repo' do
       before { GitFactory.create(repository_pathname) }
-      it do
+      it do # rubocop:disable RSpec/ExampleLength
         is_expected.to eq(
           <<-EOS.gsub(/^ {12}/, '')
             Working directory: #{repository_pathname.realpath}/
-              HEAD: none
+              HEAD: refs/heads/master
             Remotes: none
             Branches: none
           EOS
@@ -607,7 +605,7 @@ RSpec.describe GitSimple do
         GitFactory.clone(repository_pathname, remote_repository_pathname)
       end
 
-      it do
+      it do # rubocop:disable RSpec/ExampleLength
         is_expected.to eq(
           <<-EOS.gsub(/^ {12}/, '')
             Working directory: #{repository_pathname.realpath}/

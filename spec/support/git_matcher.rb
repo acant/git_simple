@@ -104,7 +104,6 @@ RSpec::Matchers.define :have_commit do |expected_commit|
     commit = result[commit_index]
 
     @actual = {}
-    # rubocop:disable Metrics/LineLength
     @actual[:message]         = commit.message                if @expected.key?(:message)
     @actual[:author_at]       = norm(commit.author[:time])    if @expected.key?(:author_at)
     @actual[:author_name]     = commit.author[:name]          if @expected.key?(:author_name)
@@ -112,7 +111,6 @@ RSpec::Matchers.define :have_commit do |expected_commit|
     @actual[:committer_at]    = norm(commit.committer[:time]) if @expected.key?(:committer_at)
     @actual[:committer_name]  = commit.committer[:name]       if @expected.key?(:committer_name)
     @actual[:committer_email] = commit.committer[:email]      if @expected.key?(:committer_email)
-    # rubocop:enable all
 
     next false unless commit
     @actual == @expected

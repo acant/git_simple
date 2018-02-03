@@ -72,7 +72,7 @@ class GitFactory < FileTreeFactory
   # @param (see #write)
   #
   # @return [void]
-  def add(*paths_and_options) # rubocop:disable Metrics/AbcSize
+  def add(*paths_and_options)
     paths    = paths_and_options.dup
     options  = paths.last.is_a?(Hash) ? paths.pop : {}
     filename = Pathname('').join(*paths).to_s
@@ -107,7 +107,7 @@ class GitFactory < FileTreeFactory
   # @option options [String] :email
   #
   # @return [void]
-  def commit(message, options = {}) # rubocop:disable Metrics/AbcSize
+  def commit(message, options = {})
     rugged_repository.index.reload
     author_hash = {
       name:  options[:name] || GitFactory.default_name,

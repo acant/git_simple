@@ -22,7 +22,7 @@ class GitSimple
     # @yieldparam [Pathname] realpath
     #
     # @return [Array<Pathname>]
-    def self.glob_to_pathnames(patterns, base, &block) # rubocop:disable Metrics/AbcSize
+    def self.glob_to_pathnames(patterns, base, &block)
       base_pathname = to_pathname(base)
 
       pathnames =

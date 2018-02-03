@@ -5,10 +5,21 @@ AllCops:
     - 'tmp/**/*'
   TargetRubyVersion: 2.0
 
+Naming/HeredocDelimiterNaming:
+  Enabled: false
+
+Metrics/ClassLength:
+  Max: 150
+
 Metrics/LineLength:
   Max: 90
+  Exclude:
+    - 'spec/**/*'
 
 Metrics/MethodLength:
+  Max: 25
+
+Metrics/AbcSize:
   Max: 20
 
 BlockLength:
@@ -20,4 +31,4 @@ RSpec/MessageSpies:
   Enabled: false
 
 RSpec/NestedGroups:
-  Max: 4
+  Max: 5

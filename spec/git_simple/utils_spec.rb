@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-# rubocop:disable SpaceBeforeSemicolon, Semicolon, LineLength
+# rubocop:disable SpaceBeforeSemicolon, Semicolon
 # rubocop:disable RSpec/EmptyLineAfterFinalLet
 
 RSpec.describe GitSimple::Utils do
