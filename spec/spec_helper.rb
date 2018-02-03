@@ -4,7 +4,10 @@ require 'rspec/tabular'
 require 'pp'
 Dir[File.dirname(__FILE__) + '/support/**/*.rb'].each { |f| require f }
 require 'simplecov'
-SimpleCov.start
+SimpleCov.start do
+  add_filter '/spec/'
+  add_filter '/features/'
+end
 
 require 'git_simple'
 
