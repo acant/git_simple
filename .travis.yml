@@ -1,22 +1,17 @@
 sudo: false
 language: ruby
-os:
-  - linux
-  - osx
 rvm:
   - 2.0
   - 2.1
   - 2.3
   - 2.4
+  - 2.5
   - ruby-head
 matrix:
   allow_failures:
     - rvm: ruby-head
-  exclude:
-    - rvm: 2.0
-      os: osx
-    - rvm: 2.4
-      os: osx
-    - rvm: ruby-head
-      os: osx
-before_install: gem install bundler -v 1.15.1
+addons:
+  code_climate:
+    repo_token: 2c37632ea2cc4a5e339eef2ba9e3c50e9f547a170ab1bcb5c3dff432741cd15f
+after_success:
+  - bundle exec codeclimate-test-reporter
