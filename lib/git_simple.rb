@@ -373,7 +373,7 @@ class GitSimple
   # @return [GitSimple]
   def glob_to_index(args)
     index_write do |index|
-      Utils.glob_to_pathnames(
+      Utils.each_with_glob(
         args, working_directory.realpath
       ) do |relative_path, realpath|
         yield(index, relative_path, realpath)

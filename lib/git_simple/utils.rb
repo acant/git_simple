@@ -16,13 +16,12 @@ class GitSimple
     end
 
     # @param [Array<String, Array<String>, Pathname>] patterns
-    # @param [String, Array<String>, Pathname base
-    #
+    # @param [String, Array<String>, Pathname] base
     # @yieldparam [Pathname] relative_path to the base directory path
     # @yieldparam [Pathname] realpath
     #
-    # @return [Array<Pathname>]
-    def self.glob_to_pathnames(patterns, base, &block)
+    # @return [void]
+    def self.each_with_glob(patterns, base, &block)
       base_pathname = to_pathname(base)
 
       pathnames =
@@ -34,16 +33,12 @@ class GitSimple
         .flatten
         .reject(&:directory?)
 
-      if block
-        pathnames.each do |pathname|
-          block.call(
-            pathname.relative_path_from(base_pathname),
-            pathname.realpath
-          )
-        end
+      pathnames.each do |pathname|
+        block.call(
+          pathname.relative_path_from(base_pathname),
+          pathname.realpath
+        )
       end
-
-      pathnames
     end
   end
 end

@@ -19,9 +19,9 @@ RSpec.describe GitSimple::Utils do
     context { let(:args) { ['path1', nil, %w[path2 path3], nil, 'path4'] } ; it { is_expected.to eq(pathname) } }
   end
 
-  describe '.glob_to_pathnames' do
+  describe '.each_with_glob' do # rubocop:disable RSpec/EmptyExampleGroup
     subject do
-      described_class.glob_to_pathnames(
+      described_class.each_with_glob(
         [Pathname('file*'), 'dir1', 'other'],
         base_pathname
       ) { |relative_path, realpath| object.test(relative_path, realpath) }
@@ -44,8 +44,6 @@ RSpec.describe GitSimple::Utils do
         write('other')
       end
     end
-
-    it { is_expected.to eq([file1, file2, file4, file3, other]) }
 
     its_side_effects_are do
       expect(object).to have_received(:test)
