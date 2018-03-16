@@ -1,6 +1,7 @@
 require 'git_simple/version'
 require 'git_simple/utils'
 require 'rugged'
+require 'grit'
 require 'pathname'
 
 # Simple interface for interacting with a Git repository.
@@ -160,6 +161,16 @@ class GitSimple
       )
       rugged.checkout_head(strategy: :force)
     end
+
+    # FIXME: Until a rugged/libgit2 re-implementation of automatic garbage
+    # collection is created or available, the gc command which is built-in to
+    # standard git must be used. Instead of temporarily re-implmentig it the
+    # existing grit implementation can be used. Even through it is no longer
+    # maintained, it is good enough when it will be replaced soon.
+    #
+    # @see https://git-scm.com/docs/git-gc
+    # @see https://github.com/mojombo/grit/blob/5608567286e64a1c55c5e7fcd415364e04f8986e/lib/grit/repo.rb#L645
+    Grit::Repo.new(rugged.workdir).gc_auto
 
     self
   end
