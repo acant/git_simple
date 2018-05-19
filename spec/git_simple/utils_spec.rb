@@ -58,4 +58,63 @@ RSpec.describe GitSimple::Utils do
         .with(Pathname('other'), other.realpath)
     end
   end
+
+  describe 'git_clone_url' do
+    subject { described_class.git_clone_url(remote_or_url) }
+
+    before do
+      allow(GitCloneUrl).to receive(:parse)
+        .with(:remote_url)
+        .and_return(:result)
+    end
+
+    context 'with remote' do
+      let(:remote_or_url) { instance_double(Rugged::Remote, url: :remote_url) }
+
+      it { is_expected.to eq(:result) }
+    end
+
+    context 'with URL string' do
+      let(:remote_or_url) { :remote_url }
+
+      it { is_expected.to eq(:result) }
+    end
+  end
+
+  describe '.build_remote_options' do
+    subject { described_class.build_remote_options(:remote_or_url, options) }
+
+    before do
+      allow(Etc).to receive(:getlogin).and_return('user')
+      allow(described_class).to receive(:git_clone_url)
+        .and_return(GitCloneUrl.parse(remote_url))
+      allow(Rugged::Credentials::UserPassword).to receive(:new)
+        .with(username: 'user', password: :password)
+        .and_return(:rugged_credentials_user_password)
+      allow(Rugged::Credentials::SshKey).to receive(:new).with(
+        username:   'user',
+        publickey:  Pathname(ENV['HOME']).join('.ssh/id_rsa.pub').to_s,
+        privatekey: Pathname(ENV['HOME']).join('.ssh/id_rsa').to_s,
+        passphrase: :ssh_passphrase
+      ).and_return(:rugged_credentials_ssh_key)
+    end
+
+    inputs  :remote_url, :options
+    it_with 'file:///path/to/repo.git/',            {},                                                {}
+    it_with 'ssh://host.xz/path/to/repo.git/',      { ssh_passphrase: :ssh_passphrase },               { credentials: :rugged_credentials_ssh_key }
+    it_with 'ssh://user@host.xz/path/to/repo.git/', { ssh_passphrase: :ssh_passphrase },               { credentials: :rugged_credentials_ssh_key }
+    it_with 'ssh://host.xz/path/to/repo.git/',      { user: 'user', ssh_passphrase: :ssh_passphrase }, { credentials: :rugged_credentials_ssh_key }
+    it_with 'host.xz:path/to/repo.git/',            { ssh_passphrase: :ssh_passphrase },               { credentials: :rugged_credentials_ssh_key }
+    it_with 'user@host.xz:path/to/repo.git/',       { ssh_passphrase: :ssh_passphrase },               { credentials: :rugged_credentials_ssh_key }
+    it_with 'host.xz:path/to/repo.git/',            { user: 'user', ssh_passphrase: :ssh_passphrase }, { credentials: :rugged_credentials_ssh_key }
+    it_with 'http://host.xz/path/to/repo.git/',     {},                                                {}
+    it_with 'http://host.xz/path/to/repo.git/',     { user: 'user', password: :password },             { credentials: :rugged_credentials_user_password }
+    it_with 'https://host.xz/path/to/repo.git/',    {}, {}
+    it_with 'https://host.xz/path/to/repo.git/',    { user: 'user', password: :password },             { credentials: :rugged_credentials_user_password }
+
+    # TODO: These Git URLs are not currently supported by GitCloneUrl. In the
+    # future support can either be added into GitCloneUrl, or added here.
+    # it_with '/path/to/repo.git/',                     {}, {}
+    # it_with 'git://host.xz[:port]/path/to/repo.git/', {}, {}
+  end
 end

@@ -219,6 +219,10 @@ RSpec.describe GitSimple do
     end
   end
 
+  # TODO: describe '#merge'
+  # Currently, this is implicitly tested by the specs for #pull. When the #pull
+  # spec is simplified in the future, then this can be separated.
+
   describe '#pull' do
     subject { git_simple.pull }
 
