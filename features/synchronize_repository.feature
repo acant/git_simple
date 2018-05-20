@@ -16,6 +16,7 @@ Scenario Outline: Synchronize without any changes
   Examples:
     | protocol |
     | file     |
+    | git      |
     | http     |
     | https    |
     | ssh      |
@@ -37,6 +38,7 @@ Scenario Outline: Synchronize with remote changes
   Examples:
     | protocol |
     | file     |
+    | git      |
     | http     |
     | https    |
     | ssh      |
@@ -60,6 +62,7 @@ Scenario Outline: Synchronize with local changes
   Examples:
     | protocol |
     | file     |
+    | git      |
     | http     |
     | https    |
     | ssh      |
@@ -84,6 +87,7 @@ Scenario Outline: Synchronize changes in both repositories
   Examples:
     | protocol |
     | file     |
+    | git      |
     | http     |
     | https    |
     | ssh      |

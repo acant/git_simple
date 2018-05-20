@@ -21,6 +21,7 @@ Scenario Outline: Clone from a remote repository
   Examples:
     | protocol |
     | file     |
+    | git      |
     | http     |
     | https    |
     | ssh      |

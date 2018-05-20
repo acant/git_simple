@@ -8,12 +8,13 @@ Given 'a local repository' do
   GitFactory.create(local_repository_pathname)
 end
 
-Given(/^a remote repository accessible by (file|http|https|ssh)$/) do |protocol|
+Given(/^a remote repository accessible by (\w+)$/) do |protocol|
   GitFactory.create(remote_repository_pathname, :bare)
 
   @protocol = protocol
   case protocol
   when 'file'  then nil # nothing to do
+  when 'git'   then pending
   when 'http'  then pending
   when 'https' then pending
   when 'ssh'   then pending
