@@ -32,22 +32,45 @@ RSpec.describe GitSimple do
   end
 
   describe '#clone' do
-    subject { git_simple.clone(pathname_or_remote_url) }
+    subject { git_simple.clone(pathname_or_remote_url, *args) }
+
+    let(:args) { [] }
 
     before { GitFactory.create(remote_repository_pathname, :bare) }
+
+    shared_examples_for 'executed' do
+      describe 'unforced' do
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are { expect(repository_pathname).to exist }
+      end
+
+      describe 'forced, does not exist' do
+        let(:args) { [{ force: true }] }
+
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are { expect(repository_pathname).to exist }
+      end
+
+      describe 'forced, does exist' do
+        let(:args) { [{ force: true }] }
+
+        before { GitFactory.create(repository_pathname) { write('file1') } }
+        it { is_expected.to eq(git_simple) }
+        its_side_effects_are { expect(repository_pathname).to exist }
+      end
+    end
 
     context 'with pathname' do
       let(:pathname_or_remote_url) { remote_repository_pathname.realpath }
 
-      it { is_expected.to eq(git_simple) }
-      its_side_effects_are { expect(repository_pathname).to exist }
+      it_behaves_like 'executed'
     end
 
     context 'with URL string' do
       let(:pathname_or_remote_url) { "file://#{remote_repository_pathname.realpath}" }
 
-      it { is_expected.to eq(git_simple) }
-      its_side_effects_are { expect(repository_pathname).to exist }
+
+      it_behaves_like 'executed'
     end
   end
 

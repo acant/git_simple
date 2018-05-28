@@ -25,3 +25,22 @@ Scenario Outline: Clone from a remote repository
     | http     |
     | https    |
     | ssh      |
+
+Scenario Outline: Force clone from a remote repository
+  Given a remote repository accessible by <protocol>
+    And 'remote_commit' is committed in the remote repository
+    And a local repository
+  When I execute:
+    """ruby
+    GitSimple(local_repository_pathname)
+      .clone(<protocol_url>, force: clone)
+    """
+  Then I see the repositories are synchronized
+
+  Examples:
+    | protocol |
+    | file     |
+    | git      |
+    | http     |
+    | https    |
+    | ssh      |

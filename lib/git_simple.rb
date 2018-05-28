@@ -21,6 +21,25 @@ class GitSimple
   class NoCommonCommit < Error; end
   class PushError < Error; end
 
+  # @param [#realpath, #to_s] pathname_or_remote_url
+  # @param [Hash] options
+  # @option options [String] :username
+  # @option options [String] :password
+  # @option options [String] :ssh_passphrase
+  # @option options [Boolean] :force
+  #
+  # @return [Git::Simple]
+#  def self.clone(pathname_or_remote_url, options = {})
+#    new()
+#  end
+
+  # @param (see .clone)
+  #
+  # @return (see .clone)
+#  def self.clone_f(pathname_or_remote_url, options = {})
+#    clone
+#  end
+
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)
     @pathname = Utils.to_pathname(*args)
@@ -37,6 +56,7 @@ class GitSimple
   # @option options [String] :username
   # @option options [String] :password
   # @option options [String] :ssh_passphrase
+  # @option options [Boolean] :force
   #
   # @return [Git::Simple]
   def clone(pathname_or_remote_url, options = {})
@@ -47,7 +67,8 @@ class GitSimple
         pathname_or_remote_url.to_s
       end
 
-    # raise if the pathname already exists
+    @pathname.rmtree if options[:force] && @pathname.directory?
+
     @pathname.mkpath
     Rugged::Repository.clone_at(
       remote_url,
@@ -55,6 +76,12 @@ class GitSimple
       Utils.build_remote_options(remote_url, options)
     )
     self
+  end
+
+  # @param (see #clone)
+  # @return (see #clone)
+  def clone_f(pathname_or_remote_url, options = {})
+    clone(pathname_or_remote_url, options.merge(force: true))
   end
 
   # Add files into the index.
