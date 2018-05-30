@@ -29,6 +29,14 @@ Or install it yourself as:
 
 ## Usage
 
+Clone from a remote repository:
+
+```
+GitSimple.clone('git@server:user/repo_name.git')
+```
+
+Or a new commit to the repository:
+
 ```
 GitSimple('repo')
   .add('new_file')

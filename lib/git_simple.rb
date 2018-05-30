@@ -21,24 +21,25 @@ class GitSimple
   class NoCommonCommit < Error; end
   class PushError < Error; end
 
-  # @param [#realpath, #to_s] pathname_or_remote_url
-  # @param [Hash] options
-  # @option options [String] :username
-  # @option options [String] :password
-  # @option options [String] :ssh_passphrase
-  # @option options [Boolean] :force
+  # @params (see GitSimple::Utils.process_clone_args)
   #
   # @return [Git::Simple]
-#  def self.clone(pathname_or_remote_url, options = {})
-#    new()
-#  end
+  def self.clone(pathname_or_remote_url, *args)
+    local_pathname, options =
+      Utils.process_clone_args(pathname_or_remote_url, *args)
 
-  # @param (see .clone)
+    new(local_pathname).clone(pathname_or_remote_url, options)
+  end
+
+  # @params (see GitSimple::Utils.process_clone_args)
   #
-  # @return (see .clone)
-#  def self.clone_f(pathname_or_remote_url, options = {})
-#    clone
-#  end
+  # @return [Git::Simple]
+  def self.clone_f(pathname_or_remote_url, *args)
+    local_pathname, options =
+      Utils.process_clone_args(pathname_or_remote_url, *args)
+
+    new(local_pathname).clone_f(pathname_or_remote_url, options)
+  end
 
   # @param (see Git::Simple::Utils.to_pathname)
   def initialize(*args)

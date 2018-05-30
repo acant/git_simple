@@ -81,7 +81,7 @@ RSpec.describe GitSimple::Utils do
     end
   end
 
-  describe '.build_remote_options' do
+  describe '.build_remote_options' do # rubocop:disable RSpec/EmptyExampleGroup
     subject { described_class.build_remote_options(:remote_or_url, options) }
 
     before do
@@ -99,7 +99,8 @@ RSpec.describe GitSimple::Utils do
       ).and_return(:rugged_credentials_ssh_key)
     end
 
-    inputs  :remote_url, :options
+    # rubocop:disable Style/BracesAroundHashParameters
+    inputs  :remote_url,                            :options
     it_with 'file:///path/to/repo.git/',            {},                                                {}
     it_with 'ssh://host.xz/path/to/repo.git/',      { ssh_passphrase: :ssh_passphrase },               { credentials: :rugged_credentials_ssh_key }
     it_with 'ssh://user@host.xz/path/to/repo.git/', { ssh_passphrase: :ssh_passphrase },               { credentials: :rugged_credentials_ssh_key }
@@ -109,12 +110,76 @@ RSpec.describe GitSimple::Utils do
     it_with 'host.xz:path/to/repo.git/',            { user: 'user', ssh_passphrase: :ssh_passphrase }, { credentials: :rugged_credentials_ssh_key }
     it_with 'http://host.xz/path/to/repo.git/',     {},                                                {}
     it_with 'http://host.xz/path/to/repo.git/',     { user: 'user', password: :password },             { credentials: :rugged_credentials_user_password }
-    it_with 'https://host.xz/path/to/repo.git/',    {}, {}
+    it_with 'https://host.xz/path/to/repo.git/',    {},                                                {}
     it_with 'https://host.xz/path/to/repo.git/',    { user: 'user', password: :password },             { credentials: :rugged_credentials_user_password }
+    # rubocop:enable Style/BracesAroundHashParameters
 
     # TODO: These Git URLs are not currently supported by GitCloneUrl. In the
     # future support can either be added into GitCloneUrl, or added here.
     # it_with '/path/to/repo.git/',                     {}, {}
     # it_with 'git://host.xz[:port]/path/to/repo.git/', {}, {}
+  end
+
+  describe '.split_options' do # rubocop:disable RSpec/EmptyExampleGroup
+    subject { described_class.split_options(*args) }
+
+    inputs  :args
+    it_with [],                              [[],            {}]
+    it_with %i[arg1 arg2],                   [%i[arg1 arg2], {}]
+    it_with [{ key: :value }],               [[],            { key: :value }]
+    it_with [:arg1, :arg2, { key: :value }], [%i[arg1 arg2], { key: :value }]
+  end
+
+  describe '.process_clone_args' do
+    subject do
+      described_class.process_clone_args(pathname_or_remote_url, :arg1, :arg2, :arg3)
+    end
+
+    let(:options) { { directory: :directory } }
+    before do
+      allow(described_class).to receive(:split_options)
+        .with(%i[arg1 arg2 arg3])
+        .and_return([local_pathname_parts, options])
+    end
+
+    context 'with local_pathname' do
+      let(:pathname_or_remote_url) { :noop }
+      let(:local_pathname_parts)   { %i[part] }
+
+      before do
+        allow(described_class).to receive(:to_pathname)
+          .with(:directory, local_pathname_parts)
+          .and_return(:local_pathname)
+      end
+      it { is_expected.to eq([:local_pathname, options]) }
+    end
+
+    context 'with pathname and no local_pathname' do
+      let(:pathname_or_remote_url) { Pathname('dir/basename.git') }
+      let(:local_pathname_parts)   { [] }
+
+      before do
+        allow(described_class).to receive(:to_pathname)
+          .with(:directory, Pathname('basename'))
+          .and_return(:local_pathname)
+      end
+      it { is_expected.to eq([:local_pathname, options]) }
+    end
+
+    context 'with remote_url and no local_pathname' do
+      let(:pathname_or_remote_url) { :remote_url }
+      let(:local_pathname_parts)   { [] }
+
+      before do
+        allow(described_class).to receive(:git_clone_url)
+          .with(:remote_url)
+          .and_return(double(path: 'dir/url_basename.git'))
+        allow(described_class).to receive(:to_pathname)
+          .with(:directory, 'url_basename')
+          .and_return(:local_pathname)
+      end
+
+      it { is_expected.to eq([:local_pathname, options]) }
+    end
   end
 end

@@ -43,7 +43,6 @@ class GitSimple
       end
     end
 
-
     # @param [Rugged::Remote, String] remote_or_url
     #
     # @return [GitCloneUrl]
@@ -101,6 +100,58 @@ class GitSimple
           {}
         end
       end
+    end
+
+    # Separate out an options has from the end of the arguments.
+    #
+    # @return [Array(Array, Hash)]
+    def self.split_options(*args)
+      return [args.first(args.length - 1), args.last] if args.last.is_a?(Hash)
+
+      [args, {}]
+    end
+
+    # @overload clone(pathname_or_remote_url, options)
+    # @param [#realpath, #to_s] pathname_or_remote_url
+    # @param [Hash] options
+    # @option options [String] :username
+    # @option options [String] :password
+    # @option options [String] :ssh_passphrase
+    # @option options [Boolean] :force
+    # @option options [Pathname, String, Array<String>] :directory
+    #
+    # @overload clone(pathname_or_remote_url, *local_pathname, options)
+    # @param [#realpath, #to_s] pathname_or_remote_url
+    # @param [Pathname, String, Array<String>] *local_pathname
+    # @param [Hash] options
+    # @option options [String] :username
+    # @option options [String] :password
+    # @option options [String] :ssh_passphrase
+    # @option options [Boolean] :force
+    # @option options [Pathname, String, Array<String>] :directory
+    #
+    # @return [Array(Pathname, Hash)]
+    def self.process_clone_args(pathname_or_remote_url, *args)
+      local_pathname_parts, options = Utils.split_options(args)
+
+      local_pathname =
+        # Find a base name if a pathname_parts are empty.
+        if local_pathname_parts.empty?
+          basename =
+            if pathname_or_remote_url.respond_to?(:basename)
+              pathname_or_remote_url.basename('.git')
+            else
+              File.basename(
+                Utils.git_clone_url(pathname_or_remote_url).path,
+                '.git'
+              )
+            end
+          Utils.to_pathname(options[:directory], basename)
+        else
+          Utils.to_pathname(options[:directory], local_pathname_parts)
+        end
+
+      [local_pathname, options]
     end
   end
 end

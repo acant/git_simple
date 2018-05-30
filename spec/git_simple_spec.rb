@@ -24,6 +24,42 @@ RSpec.describe GitSimple do
     it { is_expected.to eq(:result) }
   end
 
+  describe '.clone' do
+    subject { described_class.clone(:pathname_or_remote_url, :arg1, :arg2, :arg3) }
+
+    before do
+      allow(described_class::Utils).to receive(:process_clone_args)
+        .with(:pathname_or_remote_url, :arg1, :arg2, :arg3)
+        .and_return(%i[local_pathname options])
+
+      allow(described_class).to receive(:new)
+        .with(:local_pathname)
+        .and_return(git_simple = instance_double(described_class))
+      expect(git_simple).to receive(:clone)
+        .with(:pathname_or_remote_url, :options)
+        .and_return(:result)
+    end
+    it { is_expected.to eq(:result) }
+  end
+
+  describe '.clone_f' do
+    subject { described_class.clone_f(:pathname_or_remote_url, :arg1, :arg2, :arg3) }
+
+    before do
+      allow(described_class::Utils).to receive(:process_clone_args)
+        .with(:pathname_or_remote_url, :arg1, :arg2, :arg3)
+        .and_return(%i[local_pathname options])
+
+      allow(described_class).to receive(:new)
+        .with(:local_pathname)
+        .and_return(git_simple = instance_double(described_class))
+      expect(git_simple).to receive(:clone_f)
+        .with(:pathname_or_remote_url, :options)
+        .and_return(:result)
+    end
+    it { is_expected.to eq(:result) }
+  end
+
   describe '#init' do
     subject { git_simple.init }
 
@@ -69,8 +105,33 @@ RSpec.describe GitSimple do
     context 'with URL string' do
       let(:pathname_or_remote_url) { "file://#{remote_repository_pathname.realpath}" }
 
-
       it_behaves_like 'executed'
+    end
+  end
+
+  describe '#clone_f' do
+    subject { git_simple.clone_f(:pathname_or_remote_url, *args) }
+
+    context 'with no options' do
+      let(:args) { [] }
+
+      before do
+        expect(git_simple).to receive(:clone)
+          .with(:pathname_or_remote_url, force: true)
+          .and_return(:result)
+      end
+      it { is_expected.to eq(:result) }
+    end
+
+    context 'with options' do
+      let(:args) { [{ key: :value }] }
+
+      before do
+        expect(git_simple).to receive(:clone)
+          .with(:pathname_or_remote_url, key: :value, force: true)
+          .and_return(:result)
+      end
+      it { is_expected.to eq(:result) }
     end
   end
 

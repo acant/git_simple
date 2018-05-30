@@ -13,8 +13,7 @@ Scenario Outline: Clone from a remote repository
     And 'remote_commit' is committed in the remote repository
   When I execute:
     """ruby
-    GitSimple(local_repository_pathname)
-      .clone(<protocol_url>)
+    GitSimple.clone(<protocol_url>, local_repository_pathname)
     """
   Then I see the repositories are synchronized
 
@@ -32,8 +31,7 @@ Scenario Outline: Force clone from a remote repository
     And a local repository
   When I execute:
     """ruby
-    GitSimple(local_repository_pathname)
-      .clone(<protocol_url>, force: clone)
+    GitSimple.clone_f(<protocol_url>, local_repository_pathname)
     """
   Then I see the repositories are synchronized
 
