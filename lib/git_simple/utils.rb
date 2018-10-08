@@ -43,6 +43,9 @@ class GitSimple
       end
     end
 
+    # Use the GitCloneURL to parse the URL, whether it is specified as a string
+    # or as a git remote with a URL.
+    #
     # @param [Rugged::Remote, String] remote_or_url
     #
     # @return [GitCloneUrl]
@@ -103,6 +106,8 @@ class GitSimple
     end
 
     # Separate out an options has from the end of the arguments.
+    #
+    # @param [Array] *args the method will try to split the options out of
     #
     # @return [Array(Array, Hash)]
     def self.split_options(*args)

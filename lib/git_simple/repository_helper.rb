@@ -1,5 +1,6 @@
 class GitSimple
-  # Common helper code for using the Rugged::Repository.
+  # Common wrapper methods around the Rugged::Repository to make it easier for
+  # the main GitSimple class to use it.
   class RepositoryHelper
     # @param [Rugged::Repository] rugged
     def initialize(rugged)

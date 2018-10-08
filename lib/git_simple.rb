@@ -21,9 +21,11 @@ class GitSimple
   class NoCommonCommit < Error; end
   class PushError < Error; end
 
-  # @params (see GitSimple::Utils.process_clone_args)
+  # Shortcut wrapper to clone the specified repository.
   #
-  # @return [Git::Simple]
+  # @param (see GitSimple::Utils.process_clone_args)
+  #
+  # @return [GitSimple]
   def self.clone(pathname_or_remote_url, *args)
     local_pathname, options =
       Utils.process_clone_args(pathname_or_remote_url, *args)
@@ -31,9 +33,11 @@ class GitSimple
     new(local_pathname).clone(pathname_or_remote_url, options)
   end
 
-  # @params (see GitSimple::Utils.process_clone_args)
+  # Shortcut wrapper to force clone the specified repository.
   #
-  # @return [Git::Simple]
+  # @param (see GitSimple::Utils.process_clone_args)
+  #
+  # @return [GitSimple]
   def self.clone_f(pathname_or_remote_url, *args)
     local_pathname, options =
       Utils.process_clone_args(pathname_or_remote_url, *args)
@@ -41,12 +45,15 @@ class GitSimple
     new(local_pathname).clone_f(pathname_or_remote_url, options)
   end
 
-  # @param (see Git::Simple::Utils.to_pathname)
+  # @param (see GitSimple::Utils.to_pathname) path to the working directory
+  #   of the repository
   def initialize(*args)
     @pathname = Utils.to_pathname(*args)
   end
 
-  # @return [Git::Simple]
+  # Initialize a new git repository with it working directory at @pathname.
+  #
+  # @return [GitSimple]
   def init
     Rugged::Repository.init_at(@pathname.to_s)
     self
@@ -57,9 +64,9 @@ class GitSimple
   # @option options [String] :username
   # @option options [String] :password
   # @option options [String] :ssh_passphrase
-  # @option options [Boolean] :force
+  # @option options [Boolean] :force the clone even if the destination exists
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def clone(pathname_or_remote_url, options = {})
     remote_url =
       if pathname_or_remote_url.respond_to?(:realpath)
@@ -79,8 +86,9 @@ class GitSimple
     self
   end
 
+  # Shortcut wrapper to force clone a repository.
   # @param (see #clone)
-  # @return (see #clone)
+  # @return [GitSimple(see #clone)
   def clone_f(pathname_or_remote_url, options = {})
     clone(pathname_or_remote_url, options.merge(force: true))
   end
@@ -91,7 +99,7 @@ class GitSimple
   #
   # @param [Array<String, Array<String>, Pathname>] *args
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def add(*args)
     helper.glob_to_index(args) do |index, relative_path|
       index.add(relative_path.to_s)
@@ -102,7 +110,7 @@ class GitSimple
 
   # Add all changes in the working tree into the index.
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def add_all
     helper.index_write do |index|
       index.add_all
@@ -116,7 +124,7 @@ class GitSimple
   #
   # @param [Array<String, Array<String>, Pathname>] *args
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def rm(*args)
     helper.glob_to_index(args) do |index, relative_path, realpath|
       index.remove(relative_path.to_s)
@@ -133,7 +141,7 @@ class GitSimple
   #
   # @raise (see #commit_create)
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def commit(message, options = {})
     helper.index_write do
       helper.commit_create(
@@ -147,12 +155,14 @@ class GitSimple
     self
   end
 
+  # Merge the branch into the working directory.
+  #
   # @param [Rugged::Branch] merge_branch
   #
   # @raise GitSimple::MergeConflict
   # @raise GitSimple::NoCommonCommit
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def merge(merge_branch, options = {})
     merge_analysis = rugged.merge_analysis(merge_branch.name)
     if merge_analysis.include?(:fastforward)
@@ -207,7 +217,7 @@ class GitSimple
   # @raise GitSimple::NoCommonCommit
   # @raise (see #commit_create)
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def pull(options = {}, &block)
     return self unless helper.head_remote
     helper.head_remote.fetch(
@@ -241,7 +251,7 @@ class GitSimple
   # @option options [String] :password
   # @option options [String] :ssh_passphrase
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def push(options = {})
     return self if rugged.empty?
     return self unless helper.head_remote
@@ -260,21 +270,20 @@ class GitSimple
   # @yieldparam [Rugged] rugged
   # @yieldparam [Pathname] working_directory
   #
-  # @return [Git::Simple]
+  # @return [GitSimple]
   def bypass
     yield(rugged, helper.working_directory)
     self
   end
 
   # @overload log
+  #   Return the log of the entire repository
+  # @overload log(*args)
+  #   Return the log for only the specified path
+  #   @param [Pathname, String, Array<Pathname, String>] *args
   #
-  # @overload log(path)
-  #   @param [Pathname, String] path
-  #
-  # @overload log(*path)
-  #   @param [Array<Pathname, String> *path
-  #
-  # @return [Enumerable<Rugged::Commit>]
+  # @return [Enumerable<Rugged::Commit>] which will iterate through all of the
+  #   commits in the log sorted by date
   def log(*args)
     return [] unless helper.head_target
 
@@ -314,16 +323,19 @@ class GitSimple
     result
   end
 
-  # @return [Array<String>]
+  # @return [Array<String>] names of all the remotes in the repository
   def remote_names
     rugged.remotes.map(&:name)
   end
 
-  # @return [Array<String>]
+  # @return [Array<String>] names of all the branches in the repository.
   def branch_names
     rugged.branches.map(&:name)
   end
 
+  # Is the working tree clean (e.g., everything has already been committed or
+  # dirty. (e.g., uncommitted changes exist)
+  #
   # @return [Boolean]
   def clean_working_tree?
     rugged.status do |_file, status|
@@ -350,6 +362,9 @@ class GitSimple
   end
 end
 
+# Wrapper to make it easier to initialize a new GitSimple object.
+# @param (see GitSimple#initialize)
+# @return [GitSimple]
 def GitSimple(*args) # rubocop:disable Naming/MethodName
   GitSimple.new(*args)
 end
